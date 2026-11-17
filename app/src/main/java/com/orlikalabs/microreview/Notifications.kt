@@ -21,6 +21,15 @@ class Notifications {
         const val CHANNEL_ID = "lockscreen_review"
         const val NOTIFICATION_ID = 1
 
+        /** The cards offered while the phone is in use ([NudgeSession]): they pop up, and never show on the lock screen. */
+        const val NUDGE_CHANNEL_ID = "nudge_review"
+
+        /** How long "Keep going" is offered after a nudge's answer. */
+        private const val KEEP_GOING_TIMEOUT_MS = 8_000L
+
+        /** Once its answer is shown, a nudge's card is being looked at: it only goes away if forgotten. */
+        private const val REVEALED_NUDGE_TIMEOUT_MS = 10 * 60_000L
+
         /** The scheduled reviews ([ScheduledReview]). */
         const val SCHEDULED_CHANNEL_ID = "scheduled_review"
         const val ACTION_SHOW_ANSWER = "ACTION_SHOW_ANSWER"
@@ -119,6 +128,20 @@ class Notifications {
             notificationManager.deleteNotificationChannel(LEGACY_CHANNEL_ID)
         }
 
+        /** The channel of the nudges: high importance, so the card pops up over the app in use. */
+        fun createNudgeChannel(context: Context) {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channel = NotificationChannel(
+                NUDGE_CHANNEL_ID,
+                context.getString(R.string.nudge_channel_name),
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = context.getString(R.string.nudge_channel_description)
+                lockscreenVisibility = Notification.VISIBILITY_SECRET
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
         /** The channel of the scheduled reviews: high importance, so it pops up at the chosen times. */
         fun createScheduledChannel(context: Context) {
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -163,9 +186,12 @@ class Notifications {
 
             setAnswerButtons(context, expandedView, card, ACTION_BUTTON_PREFIX)
 
-            builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            // A nudge ([NudgeSession]): pops up over the app in use, never on the lock screen, and can be swiped away.
+            val nudge = FocusSettings.nudgesEnabled(context)
+            if (nudge) createNudgeChannel(context)
+            builder = NotificationCompat.Builder(context, if (nudge) NUDGE_CHANNEL_ID else CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setVisibility(if (nudge) NotificationCompat.VISIBILITY_SECRET else NotificationCompat.VISIBILITY_PUBLIC)
                 .setStyle(NotificationCompat.DecoratedCustomViewStyle())
                 .setCustomContentView(collapsedView)
                 .setCustomBigContentView(expandedView)
@@ -175,7 +201,8 @@ class Notifications {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setSilent(isSilent)
                 .setOnlyAlertOnce(!replace)
-                .setOngoing(true)
+                .setOngoing(!nudge)
+            if (nudge) addNudgeActions(context, builder, card, revealed, collapsedView, expandedView)
         } else {
             val title = context.getString(R.string.notification_title)
             collapsedView.setTextViewText(R.id.textViewCollapsedHeader, context.getString(R.string.all_cards_done))
@@ -242,6 +269,87 @@ class Notifications {
     }
 
     /**
+     * What a nudge's card adds: standard actions, which unlike the custom view's buttons also show in the pop-up, so
+     * the card can be answered without opening the notification shade. Before the answer: "Show answer" and
+     * "Snooze"; after it, with "Pass / Fail only": "Fail" and "Pass" (with four answers, the view's own buttons
+     * stay). The collapsed view then shows the answer under the question. An untouched card times out, so that the
+     * time recorded with an answer is time spent on it.
+     */
+    private fun addNudgeActions(
+        context: Context,
+        builder: NotificationCompat.Builder,
+        card: CardInfo,
+        revealed: Boolean,
+        collapsedView: RemoteViews,
+        expandedView: RemoteViews,
+    ) {
+        val key = CardSync.CardKey(card.noteID, card.cardOrd)
+        // The pop-up shows the collapsed view: a second line, for a question longer than a word.
+        collapsedView.setInt(R.id.textViewCollapsedHeader, "setMaxLines", 2)
+        if (!revealed) {
+            expandedView.setViewVisibility(R.id.buttonShowAnswer, View.GONE)
+            builder.addAction(0, context.getString(R.string.show_answer), createIntent(context, ACTION_SHOW_ANSWER))
+            builder.addAction(
+                0,
+                context.getString(R.string.nudge_snooze_action, FocusSettings.snoozeMinutes(context)),
+                createIntent(context, NudgeSession.ACTION_SNOOZE),
+            )
+            builder.setTimeoutAfter(FocusSettings.nudgeLifetimeSeconds(context) * 1000L)
+        } else {
+            collapsedView.setTextViewText(R.id.textViewCollapsedTitle, CardText.clean(card.q))
+            collapsedView.setTextViewText(R.id.textViewCollapsedHeader, CardText.clean(card.a))
+            if (FocusSettings.passFailOnly(context)) {
+                expandedView.setViewVisibility(R.id.answerButtons, View.GONE)
+                builder.addAction(0, context.getString(R.string.fail), createIntent(context, ACTION_BUTTON_PREFIX + AnswerButtons.AGAIN, key))
+                builder.addAction(0, context.getString(R.string.pass), createIntent(context, ACTION_BUTTON_PREFIX + AnswerButtons.GOOD, key))
+            }
+            builder.setTimeoutAfter(REVEALED_NUDGE_TIMEOUT_MS)
+        }
+        builder.setDeleteIntent(createIntent(context, NudgeSession.ACTION_DISMISSED))
+    }
+
+    /**
+     * After a nudge's answer: the same notification, updated in place, shows the answered [card] with "Keep going",
+     * which opens the review screen for more cards, then disappears by itself.
+     */
+    fun showKeepGoingPrompt(context: Context, card: CardInfo, deckName: String) {
+        createNudgeChannel(context)
+        val message = context.getString(R.string.nudge_recorded)
+        val title = context.getString(R.string.notification_title_deck, deckName)
+        val collapsedView = RemoteViews(context.packageName, R.layout.notification_collapsed)
+        collapsedView.setTextViewText(R.id.textViewCollapsedHeader, message)
+        collapsedView.setTextViewText(R.id.textViewCollapsedTitle, title)
+
+        val expandedView = cardView(context, card, revealed = true, pageActions = null)
+        expandedView.setTextViewText(R.id.textViewNextCard, message)
+        expandedView.setViewVisibility(R.id.textViewNextCard, View.VISIBLE)
+        expandedView.setViewVisibility(R.id.buttonShowAnswer, View.GONE)
+
+        val keepGoing = PendingIntent.getActivity(
+            context,
+            0,
+            FocusReviewActivity.sessionIntent(context),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val notification = NotificationCompat.Builder(context, NUDGE_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setVisibility(NotificationCompat.VISIBILITY_SECRET)
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            .setCustomContentView(collapsedView)
+            .setCustomBigContentView(expandedView)
+            .setContentTitle(title)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setTimeoutAfter(KEEP_GOING_TIMEOUT_MS)
+            .setSilent(true)
+            .setOnlyAlertOnce(true)
+            .addAction(0, context.getString(R.string.nudge_keep_going), keepGoing)
+            .build()
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        // No cancel first: the notification is updated in place, where the answer was tapped.
+        notificationManager.notify(NOTIFICATION_ID, notification)
+    }
+
+    /**
      * The scheduled review notification ([ScheduledReview]), separate from the lock screen one. Before Start:
      * "Time for a card" and a Start action, which also shows in the pop-up. After Start: the question and
      * "Show answer", then the answer and the answer buttons once [revealed].
@@ -286,7 +394,11 @@ class Notifications {
 
     /** Shows [card]'s answer buttons, each sending [actionPrefix] followed by its number, with the card. */
     private fun setAnswerButtons(context: Context, view: RemoteViews, card: CardInfo, actionPrefix: String) {
-        val visibleButtons = AnswerButtons.visibleButtons(card.buttonCount)
+        // "Pass / Fail only": Again and Good under those names, Hard and Easy left out.
+        val passFail = FocusSettings.passFailOnly(context)
+        val visibleButtons = AnswerButtons.shownButtons(card.buttonCount, passFail)
+        view.setTextViewText(R.id.button1, context.getString(AnswerLabels.label(AnswerButtons.AGAIN, passFail)))
+        view.setTextViewText(R.id.button3, context.getString(AnswerLabels.label(AnswerButtons.GOOD, passFail)))
         val key = CardSync.CardKey(card.noteID, card.cardOrd)
         listOf(R.id.button1, R.id.button2, R.id.button3, R.id.button4).forEachIndexed { index, buttonId ->
             view.setOnClickPendingIntent(buttonId, createIntent(context, actionPrefix + (index + 1), key))

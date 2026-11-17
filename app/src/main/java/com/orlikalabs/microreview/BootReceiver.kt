@@ -17,11 +17,14 @@ class BootReceiver : BroadcastReceiver() {
             Intent.ACTION_MY_PACKAGE_REPLACED, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED -> {
                 Log.i("Notifications", "${intent.action}: setting the scheduled review alarm again")
                 ScheduledReview.schedule(context.applicationContext)
+                // An app update stops the monitor.
+                if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) UsageMonitorService.sync(context)
                 return
             }
             else -> return
         }
         Log.i("Notifications", "boot completed, restoring the card notification")
+        UsageMonitorService.sync(context)
         val pendingResult = goAsync()
         val appContext = context.applicationContext
         thread {

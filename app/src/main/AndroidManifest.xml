@@ -11,7 +11,22 @@
     <!-- The card picture on the lock screen, where the live wallpaper can't be lock only (LockScreenPicture). -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
 
+    <!-- The usage monitor (UsageMonitorService): which app is in front, read from the usage events. Granted by the
+         user in the system settings ("Usage access"), not at install. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- "Also when moving in a vehicle" (DrivingDetector): optional, asked when the setting is turned on. -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
     <queries>
+        <!-- Android Auto's connection state, to hold cards back while driving (DrivingDetector). -->
+        <package android:name="com.google.android.projection.gearhead" />
+        <!-- The apps of the launcher, to choose the gated apps and the apps with their own timing. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
         <!-- Whether "Wallpaper & style" exists, to set the live wallpaper on the lock screen only (WallpaperSetup). -->
         <intent>
             <action android:name="android.settings.WALLPAPER_SETTINGS" />
@@ -52,6 +67,30 @@
             android:launchMode="singleTop"
             android:taskAffinity=""
             android:theme="@style/Theme.AnkiNotifications" />
+        <!-- The app gate, a full-screen nudge or a "Keep going" session: opened over the app in front. -->
+        <activity
+            android:name=".FocusReviewActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/Theme.AnkiNotifications" />
+        <activity
+            android:name=".FocusSettingsActivity"
+            android:exported="false"
+            android:label="@string/focus_title"
+            android:theme="@style/Theme.AnkiNotifications" />
+        <!-- Watches which app is in front while the phone is in use, for the nudges and the app gate. -->
+        <service
+            android:name=".UsageMonitorService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Shows the user's flashcards at intervals while the phone is in use and before apps the user chose, which needs the screen and app-in-front events for as long as the feature is on." />
+        </service>
+        <receiver android:name=".VehicleReceiver" android:exported="false" />
         <receiver android:name=".NotificationReceiver"/>
         <receiver
             android:name=".StandardCardWidget"

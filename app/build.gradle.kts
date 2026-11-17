@@ -24,7 +24,9 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.orlikalabs.microreview"
+        // Its own ID, so this build installs next to (not over) the upstream app, which is signed with another key.
+        applicationId = "com.orlikalabs.microreview.focus"
+        versionNameSuffix = "-focus"
         minSdk = 26
         targetSdk = 36
         versionCode = 75
@@ -38,6 +40,14 @@ android {
     }
 
     signingConfigs {
+        // A debug key kept in the repository, so every CI build is signed alike and installs over the previous
+        // one (a fresh runner would otherwise sign each build with a new key). Debug only: it protects nothing.
+        getByName("debug") {
+            storeFile = rootProject.file("focus-debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         if (uploadStoreFile != null && uploadStorePassword != null) {
             create("upload") {
                 storeFile = file(uploadStoreFile)
@@ -124,5 +134,7 @@ dependencies {
     // talks to AnkiDroid's ContentProvider directly (AnkiDroidContract).
     androidTestImplementation("com.github.ankidroid:Anki-Android:v2.17alpha8")
     implementation("androidx.work:work-runtime:2.10.5")
+    // "Also when moving in a vehicle" (DrivingDetector): activity recognition, from Google Play services.
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 
 }

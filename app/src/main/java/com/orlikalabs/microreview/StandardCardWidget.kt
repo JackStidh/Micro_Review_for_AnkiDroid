@@ -354,7 +354,10 @@ class StandardCardWidget : AppWidgetProvider() {
                         views.setTextViewText(R.id.widgetQuestion, question)
                         views.setTextViewText(R.id.widgetAnswer, answer.orEmpty())
                     }
-                    val visible = AnswerButtons.visibleButtons(card.buttonCount)
+                    val passFail = FocusSettings.passFailOnly(context)
+                    val visible = AnswerButtons.shownButtons(card.buttonCount, passFail)
+                    views.setTextViewText(R.id.widgetButton1, context.getString(AnswerLabels.label(AnswerButtons.AGAIN, passFail)))
+                    views.setTextViewText(R.id.widgetButton3, context.getString(AnswerLabels.label(AnswerButtons.GOOD, passFail)))
                     answerButtonIds.forEach { (button, id) ->
                         views.setViewVisibility(id, if (button in visible) View.VISIBLE else View.GONE)
                     }

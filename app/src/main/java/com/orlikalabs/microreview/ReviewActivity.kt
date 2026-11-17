@@ -36,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -245,8 +246,10 @@ private fun androidx.compose.foundation.layout.ColumnScope.CardReviewContent(
         }
     } else {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AnswerButtons.visibleButtons(state.card.buttonCount).forEach { button ->
-                val (label, background, text) = EASE_STYLES.getValue(button)
+            val passFail = FocusSettings.passFailOnly(LocalContext.current)
+            AnswerButtons.shownButtons(state.card.buttonCount, passFail).forEach { button ->
+                val (_, background, text) = EASE_STYLES.getValue(button)
+                val label = AnswerLabels.label(button, passFail)
                 Button(
                     onClick = { onAnswer(button) },
                     enabled = !state.busy,

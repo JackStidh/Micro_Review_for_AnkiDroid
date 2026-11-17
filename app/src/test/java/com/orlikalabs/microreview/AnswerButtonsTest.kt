@@ -42,4 +42,15 @@ class AnswerButtonsTest {
         assertEquals(listOf(AGAIN, HARD, GOOD, EASY), AnswerButtons.visibleButtons(0))
         assertEquals(3, AnswerButtons.easeFor(GOOD, 0))
     }
+
+    @Test
+    fun passFailShowsAgainAndGoodOnly() {
+        for (count in 2..4) assertEquals(listOf(AGAIN, GOOD), AnswerButtons.shownButtons(count, passFailOnly = true))
+        assertEquals(AnswerButtons.visibleButtons(4), AnswerButtons.shownButtons(4, passFailOnly = false))
+        // "Pass" is still Good for AnkiDroid, whatever the card's buttons.
+        assertEquals(3, AnswerButtons.easeFor(GOOD, 4))
+        assertEquals(2, AnswerButtons.easeFor(GOOD, 3))
+        assertEquals(2, AnswerButtons.easeFor(GOOD, 2))
+        assertEquals(1, AnswerButtons.easeFor(AGAIN, 4))
+    }
 }

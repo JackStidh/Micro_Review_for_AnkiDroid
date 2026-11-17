@@ -28,4 +28,10 @@
         <item name="android:paddingHorizontal">0dp</item>
         <item name="android:textSize">13sp</item>
     </style>
+
+    <!-- Answer button of the full-screen review (FocusReviewActivity): the notification's pill, taller for a thumb. -->
+    <style name="FocusAnswerButton" parent="NotificationAnswerButton">
+        <item name="android:layout_height">56dp</item>
+        <item name="android:textSize">16sp</item>
+    </style>
 </resources>

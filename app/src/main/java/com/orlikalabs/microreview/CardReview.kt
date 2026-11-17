@@ -67,8 +67,20 @@ object CardReview {
                 anki.reviewCard(localState.noteID, localState.cardOrd, ease, timeTaken)
             }
 
+            // Answered from a nudge: the next card waits for its own nudge, and "Keep going" is offered meanwhile.
+            val nudge = countsForSession && NudgeSession.isActive(context)
+            if (nudge) NudgeSession.onAnswered(context)
+
             // After the session's last review, the next card is stored now but its notification waits for the next lock.
             CardStateController.showNextCard(context, silent = true)
+            if (nudge) {
+                // With no card left, the notification was removed: nothing to keep going with.
+                if (anki.storedState?.hasCard() == true) {
+                    Notifications.create().showKeepGoingPrompt(context, localState.toCardInfo(), localState.deckName)
+                }
+                NudgeSession.onPromptDone(context)
+                return after
+            }
             // Only while locked: unlocked (answered from a scheduled review), the lock screen notification stays hidden.
             // Not with no card left: no next card to announce. The stored card stays if AnkiDroid couldn't be read.
             if (after == LockSession.AfterAnswer.WAIT_FOR_NEXT_LOCK && LockSession.isLocked(context) && anki.storedState?.hasCard() == true) {
@@ -106,6 +118,11 @@ object CardReview {
         StandardCardWidget.updateAll(context)
         if (!LockSession.mayPostNow(context)) return
         Notifications.create().showNotification(context, state.toCardInfo(), state.deckName, isSilent = true, replace = false)
+    }
+
+    /** Hides the answer again: a card withdrawn unanswered ([NudgeSession]) comes back as a question. */
+    fun hideAnswer(context: Context) {
+        prefs(context).edit().remove(KEY_REVEALED_CARD).remove(KEY_PAGE_CARD).apply()
     }
 
     /** "Previous" ([step] -1) or "Next" (1): another page of the displayed card, in the notification (updated in place, without alert). */

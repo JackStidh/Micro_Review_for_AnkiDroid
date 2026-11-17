@@ -58,6 +58,11 @@ object ScheduledReview {
         // A minute later: an alarm delivered slightly early must not be set again for the same time.
         schedule(context, ZonedDateTime.now().plusMinutes(1))
         if (!ScheduledReviewSettings.isEnabled(context)) return
+        val pause = FocusState.pauseReason(context)
+        if (pause != null) {
+            Log.i(TAG, "scheduled review skipped: $pause")
+            return
+        }
         CardStateController.syncWithAnkiDroid(context)
         val state = displayedCard(context)
         if (state == null) {

@@ -130,6 +130,8 @@ object LockSession {
 
     /** Whether the card notification may be posted now ([mayPost] with the current state). */
     fun mayPostNow(context: Context): Boolean {
+        // With nudges on, only for the length of a nudge, while the phone is in use ([NudgeSession]).
+        if (FocusSettings.nudgesEnabled(context)) return NudgeSession.isActive(context)
         val prefs = prefs(context)
         return mayPost(
             wallpaperActive = CardWallpaperService.isActive(context),
@@ -152,6 +154,11 @@ object LockSession {
     /** The notification couldn't be posted now: post it at the next lock. */
     fun markHidden(context: Context) {
         prefs(context).edit().putBoolean(KEY_HIDDEN, true).apply()
+    }
+
+    /** The notification is wanted again (nudges turned off): the next sync posts it. */
+    fun clearHidden(context: Context) {
+        prefs(context).edit().putBoolean(KEY_HIDDEN, false).apply()
     }
 
     /** A card notification was posted: it is visible again. */

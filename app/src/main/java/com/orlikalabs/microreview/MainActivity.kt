@@ -64,6 +64,8 @@ class MainActivity : ComponentActivity() {
         }
         // Alarms are lost when the app is force-stopped: set the next scheduled review again.
         ScheduledReview.schedule(applicationContext)
+        // The monitor of the nudges and the app gate, if they are on: opening the app is always allowed to start it.
+        UsageMonitorService.sync(applicationContext)
         requestMissingPermissions()
 
         val actions = MainScreenActions(
@@ -76,6 +78,7 @@ class MainActivity : ComponentActivity() {
             onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) },
             onOpenNotificationSettings = ::openNotificationSettings,
             onOpenBatterySettings = ::openBatterySettings,
+            onOpenFocus = { startActivity(Intent(this, FocusSettingsActivity::class.java)) },
         )
         setContent {
             AnkiNotificationsTheme {

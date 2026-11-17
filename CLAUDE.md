@@ -12,6 +12,11 @@ Micro Review for AnkiDroid is a small Android app that lets the user review Anki
 - Don't put personal information in committed files (names, accounts, emails, device models, fork URLs). Exception: the copyright lines in `LICENSE`, which name the authors.
 - Feature in progress: **lock screen review**. The plan, task checklist, open decisions and findings are in `docs/lockscreen-review/PLAN.md`. Read it before working on the feature, and tick tasks / add notes there as work progresses.
 
+- Branch `focus`: nudges while the phone is in use, the app gate, Pass / Fail, snooze and driving pause. Its files
+  (`Focus*.kt`, `Nudge*.kt`, `GateRules.kt`, `QuietTime.kt`, `Interruptions.kt`, `DrivingDetector.kt`,
+  `UsageMonitorService.kt`), how they hook into the existing ones and what is still unverified are described in
+  `docs/focus/NOTES.md`. Read it before working on that branch.
+
 ## Build & run
 
 - Toolchain: Gradle 9.3, AGP 9.0.1 (built-in Kotlin, so no `kotlin-android` plugin in `app`), Kotlin 2.3.20 with the Compose compiler Gradle plugin, Java/Kotlin bytecode target 17. Runs on JDK 17+ (CI uses 17; JDK 25 bundled with recent Android Studio works). Upgrade versions as a matched set.

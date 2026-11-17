@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -106,6 +107,8 @@ class MainScreenActions(
     val onOpenSettings: () -> Unit,
     val onOpenNotificationSettings: () -> Unit,
     val onOpenBatterySettings: () -> Unit,
+    /** Nudges, the app gate, snooze and pauses ([com.orlikalabs.microreview.FocusSettingsActivity]). */
+    val onOpenFocus: () -> Unit = {},
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -126,6 +129,9 @@ fun MainScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name), fontWeight = FontWeight.SemiBold) },
                 actions = {
+                    IconButton(onClick = actions.onOpenFocus) {
+                        Icon(Icons.Filled.Notifications, contentDescription = stringResource(R.string.focus_open))
+                    }
                     IconButton(onClick = actions.onOpenSettings) {
                         Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings_title))
                     }

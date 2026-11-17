@@ -21,6 +21,14 @@ object AnswerButtons {
         else -> listOf(AGAIN, HARD, GOOD, EASY)
     }
 
+    /**
+     * The buttons to show when "Pass / Fail only" is on ([passFailOnly]): Again ("Fail") and Good ("Pass"), whatever
+     * the card offers. Hard and Easy are left out; the ease sent is still [easeFor]'s, so Good stays Good.
+     */
+    @JvmStatic
+    fun shownButtons(buttonCount: Int, passFailOnly: Boolean): List<Int> =
+        if (passFailOnly) listOf(AGAIN, GOOD) else visibleButtons(buttonCount)
+
     /** The ease to send to AnkiDroid when [button] is tapped, or null if that button isn't valid for the card. */
     @JvmStatic
     fun easeFor(button: Int, buttonCount: Int): Int? {

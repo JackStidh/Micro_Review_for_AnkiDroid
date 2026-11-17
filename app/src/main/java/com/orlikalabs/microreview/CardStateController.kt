@@ -219,7 +219,10 @@ object CardStateController {
     private fun cancelNotification(context: Context) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         // Keep the short "next card at your next unlock" message: it times out by itself.
-        if (!LockSession.isWaitingForNextLock(context)) manager.cancel(Notifications.NOTIFICATION_ID)
+        // Nor the card just answered in a nudge: the "Keep going" prompt replaces it in place.
+        if (!LockSession.isWaitingForNextLock(context) && !NudgeSession.isPrompting(context)) {
+            manager.cancel(Notifications.NOTIFICATION_ID)
+        }
     }
 
     private fun isNotificationVisible(context: Context): Boolean {

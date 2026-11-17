@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Micro Review for AnkiDroid</string>
     <!-- Under the launcher icon, where the full name gets cut off. -->
-    <string name="launcher_label">Micro Review</string>
+    <string name="launcher_label">Micro Review Focus</string>
     <string name="again">Again</string>
     <string name="hard">Hard</string>
     <string name="good">Good</string>
@@ -179,4 +179,115 @@
     <string name="wallpaper_status_picture">A picture of the current card is your lock screen wallpaper. It changes with each card.</string>
     <string name="lock_picture_tip">Card not showing on your lock screen? Turn off the lock screen features that change the picture by themselves (for example Magazine unlock or Glance). With a picture, the notification stays visible and cards follow each other.</string>
     <string name="lock_picture_stop">Stop updating the picture</string>
+
+    <!-- Focus: Pass / Fail, nudges while the phone is in use, the app gate, snooze and pauses. -->
+    <string name="pass">Pass</string>
+    <string name="fail">Fail</string>
+    <string name="done">Done</string>
+    <string name="not_now">Not now</string>
+    <string name="minutes">%1$d min</string>
+    <string name="seconds">%1$d s</string>
+
+    <string name="nudge_channel_name">Cards while you use your phone</string>
+    <string name="nudge_channel_description">A card pops up every so often while the screen is on and unlocked. Never shown on the lock screen.</string>
+    <string name="nudge_snooze_action">Snooze %1$d min</string>
+    <string name="nudge_recorded">Recorded. One card done.</string>
+    <string name="nudge_keep_going">Keep going</string>
+
+    <string name="monitor_channel_name">Monitor</string>
+    <string name="monitor_channel_description">Kept running so cards can come while you use your phone and chosen apps can be gated. Its buttons snooze the cards.</string>
+    <string name="monitor_title">Micro Review is on</string>
+    <string name="monitor_on_nudges">Cards come while you use your phone.</string>
+    <string name="monitor_on_gate">Your chosen apps ask for cards first.</string>
+    <string name="monitor_on_both">Cards come while you use your phone, and your chosen apps ask for cards first.</string>
+    <string name="monitor_snoozed_until">Snoozed until %1$s.</string>
+    <string name="monitor_quiet_hours">Quiet hours: no cards for now.</string>
+    <string name="monitor_driving">Driving: no cards, and the gate is open.</string>
+    <string name="monitor_do_not_disturb">Do Not Disturb is on: no cards for now.</string>
+    <string name="monitor_in_call">In a call: no cards for now.</string>
+    <string name="monitor_resume">Resume</string>
+    <string name="monitor_not_driving">I\'m not driving</string>
+    <string name="snooze_30_minutes">30 min</string>
+    <string name="snooze_1_hour">1 hour</string>
+    <string name="snooze_2_hours">2 hours</string>
+    <string name="snooze_until_tomorrow">Until tomorrow</string>
+
+    <string name="gate_title">%1$s asks for cards first</string>
+    <string name="gate_progress">%1$d of %2$d answered</string>
+    <string name="gate_leave">Leave</string>
+    <plurals name="gate_skip">
+        <item quantity="one">Emergency skip (%1$d left today)</item>
+        <item quantity="other">Emergency skip (%1$d left today)</item>
+    </plurals>
+    <plurals name="session_progress">
+        <item quantity="one">%1$d card answered</item>
+        <item quantity="other">%1$d cards answered</item>
+    </plurals>
+
+    <string name="focus_title">Cards while you use your phone</string>
+    <string name="focus_change">Change</string>
+    <string name="focus_choose">Choose</string>
+    <string name="focus_setup">Finish setting up</string>
+    <string name="focus_setup_restricted">If Android says a setting is restricted for this app: open the app\'s info page (long-press its icon, then App info), tap the three dots, then \"Allow restricted settings\", and come back.</string>
+    <string name="focus_setup_allow">Allow</string>
+    <string name="focus_setup_usage">Usage access</string>
+    <string name="focus_setup_usage_detail">Lets the app see which app is in front, to time the cards per app and to gate the apps you chose. Nothing leaves your phone.</string>
+    <string name="focus_setup_overlay">Display over other apps</string>
+    <string name="focus_setup_overlay_detail">Lets the gate and full-screen cards open over the app in front.</string>
+    <string name="focus_setup_notifications">Notifications</string>
+    <string name="focus_setup_notifications_detail">Cards come as notifications.</string>
+
+    <string name="focus_snooze">Snooze</string>
+    <string name="focus_snooze_detail">No cards for a while. Also on the monitor\'s notification and on each card.</string>
+    <string name="focus_snooze_length">Snooze button on a card</string>
+    <string name="focus_snooze_lifts_gate">Snooze also opens the gate</string>
+    <string name="focus_snooze_lifts_gate_detail">Off: a snooze stops the cards, but gated apps still ask for theirs.</string>
+
+    <string name="focus_nudges">Cards while you use your phone</string>
+    <string name="focus_nudges_enable">Send me cards</string>
+    <string name="focus_nudges_detail">A card pops up every so often, only while the screen is on and unlocked, never on the lock screen. Answer it and you\'re done, or keep going. A card you don\'t touch is withdrawn, so its time doesn\'t count.</string>
+    <string name="focus_default_interval">A card every</string>
+    <string name="focus_interval_every">Every %1$d min</string>
+    <string name="focus_interval_never">Never</string>
+    <string name="focus_interval_default">Like other apps</string>
+    <string name="focus_app_intervals">Own timing per app</string>
+    <string name="focus_app_intervals_none">None. For example a card every 5 minutes on your biggest time wasters, or never on your maps app.</string>
+    <string name="focus_full_screen">Full-screen card</string>
+    <string name="focus_full_screen_detail">The card takes the whole screen instead of a notification: it can\'t be overlooked, and the time recorded is exact.</string>
+    <string name="focus_lifetime">Withdraw an untouched card after</string>
+    <string name="focus_lifetime_detail">%1$d seconds. It stays due and comes back with the next card.</string>
+
+    <string name="focus_answers">Answer buttons</string>
+    <string name="focus_pass_fail">Pass / Fail only</string>
+    <string name="focus_pass_fail_detail">Pass records Good and Fail records Again. Hard and Easy are never offered, anywhere in the app.</string>
+
+    <string name="focus_gate">App gate</string>
+    <string name="focus_gate_enable">Ask for cards before chosen apps</string>
+    <string name="focus_gate_detail">Opening one of them first asks for a few cards. Pass or Fail, each answer counts. No grace period: close the app and open it again, and it asks again. Nothing due means no gate.</string>
+    <string name="focus_gate_apps">Gated apps</string>
+    <string name="focus_gate_apps_none">None chosen yet.</string>
+    <string name="focus_gate_cards">Cards per opening</string>
+    <plurals name="focus_cards">
+        <item quantity="one">%1$d card</item>
+        <item quantity="other">%1$d cards</item>
+    </plurals>
+    <string name="focus_gate_skips">Emergency skips</string>
+    <string name="focus_gate_skips_detail">%1$d per day</string>
+
+    <string name="focus_pauses">When cards stay away</string>
+    <string name="focus_driving">While driving</string>
+    <string name="focus_driving_detail">No cards, and the gate is open, while your phone is connected to a car screen (Android Auto) or in car mode.</string>
+    <string name="focus_vehicle">Also when moving in a vehicle</string>
+    <string name="focus_vehicle_detail">Uses your phone\'s motion, for cars without a screen. Needs the physical activity permission. Also true for a passenger: the monitor\'s notification then offers \"I\'m not driving\".</string>
+    <string name="focus_dnd">During Do Not Disturb</string>
+    <string name="focus_dnd_detail">No cards while Do Not Disturb or another mode silences notifications.</string>
+    <string name="focus_call">During calls</string>
+    <string name="focus_call_detail">No cards while you are in a call.</string>
+    <string name="focus_quiet">Quiet hours</string>
+    <string name="focus_quiet_none">None. For example no cards from 22:00 to 07:00.</string>
+    <string name="focus_quiet_add">Add</string>
+    <string name="focus_quiet_clear">Remove the quiet hours</string>
+    <string name="focus_quiet_from">Quiet from</string>
+    <string name="focus_quiet_to">Until</string>
+    <string name="focus_open">Cards while you use your phone</string>
 </resources>

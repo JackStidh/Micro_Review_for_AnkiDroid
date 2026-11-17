@@ -19,6 +19,8 @@ class PeriodicWorker(context: Context, params: WorkerParameters) : Worker(contex
         Log.i("BackgroundService", "Periodic worker RAN")
         // A safety net: alarms can be lost (app force-stopped).
         ScheduledReview.schedule(applicationContext)
+        // And the monitor can be stopped by the system: start it again if Android lets a background start through.
+        UsageMonitorService.sync(applicationContext)
         if (DeckSelection.load(applicationContext).isEmpty() && AnkiDroidHelper(applicationContext).storedState == null) {
             Log.i("BackgroundService", "Periodic worker - no deck selected")
             return Result.success()

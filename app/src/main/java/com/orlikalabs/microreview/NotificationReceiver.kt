@@ -25,7 +25,9 @@ class NotificationReceiver : BroadcastReceiver() {
             ScheduledReview.ACTION_SHOW_ANSWER -> ScheduledReview::revealAnswer
             ScheduledReview.ACTION_PREVIOUS_PAGE -> ScheduledReview::showPreviousPage
             ScheduledReview.ACTION_NEXT_PAGE -> ScheduledReview::showNextPage
-            else -> answerTask(action, intent) ?: return
+            NudgeSession.ACTION_SNOOZE -> NudgeSession::snoozeFromCard
+            NudgeSession.ACTION_DISMISSED -> NudgeSession::withdraw
+            else -> FocusActions.task(action) ?: answerTask(action, intent) ?: return
         }
 
         // Looking through several decks can take a while: don't block the main thread.
