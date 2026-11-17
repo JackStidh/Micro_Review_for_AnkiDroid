@@ -47,7 +47,7 @@ object BluetoothState {
     private fun audioDeviceConnected(context: Context): Boolean {
         val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
         return try {
-            audio.getDevices(AudioManager.GET_DEVICES_ALL).any { it.type in AUDIO_TYPES }
+            audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS or AudioManager.GET_DEVICES_INPUTS).any { it.type in AUDIO_TYPES }
         } catch (e: Exception) {
             false
         }
