@@ -402,6 +402,7 @@ class FocusSettingsActivity : Activity() {
             "App in front: ${status.foreground ?: "unknown"}",
             "Next card: $next",
             "Paused: ${status.pauseReason?.name?.lowercase() ?: "no"}",
+            "Driving signs: ${DrivingDetector.signals(this)}; ${DrivingDetector.details(this)}",
             "Bluetooth connected: ${yes(BluetoothState.isConnected(this))} (nearby devices allowed: ${yes(BluetoothState.hasPermission(this))})",
             "Card style: ${FocusSettings.nudgeStyle(this).name.lowercase()}, default every ${FocusSettings.defaultIntervalMinutes(this)} min, per app: ${FocusSettings.appIntervals(this)}",
             "Gated: ${FocusSettings.gatedApps(this)}, pass: ${FocusSettings.gatePass(this) ?: "none"}",

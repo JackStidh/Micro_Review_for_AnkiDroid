@@ -54,6 +54,37 @@ object DrivingDetector {
         return Interruptions.inVehicle(prefs.getBoolean(KEY_IN_VEHICLE, false), prefs.getLong(KEY_REPORTED_AT, 0), now)
     }
 
+    /**
+     * Which signs say "driving" now, for the log and the diagnostics: "android auto", "car mode", "motion", or
+     * "none". Same checks as [isDriving].
+     */
+    fun signals(context: Context, now: Long = System.currentTimeMillis()): String {
+        val found = mutableListOf<String>()
+        if (isCarConnected(context, now)) found += "android auto"
+        if (isCarMode(context)) found += "car mode"
+        if (FocusSettings.detectVehicle(context) && now >= FocusSettings.notDrivingUntil(context)) {
+            val prefs = prefs(context)
+            if (Interruptions.inVehicle(prefs.getBoolean(KEY_IN_VEHICLE, false), prefs.getLong(KEY_REPORTED_AT, 0), now)) {
+                found += "motion"
+            }
+        }
+        return if (found.isEmpty()) "none" else found.joinToString(" + ")
+    }
+
+    /** The settings and last report behind [signals], for the diagnostics. */
+    fun details(context: Context): String {
+        val prefs = prefs(context)
+        val reportedAt = prefs.getLong(KEY_REPORTED_AT, 0)
+        val report = if (reportedAt == 0L) {
+            "no report"
+        } else {
+            "last report: ${if (prefs.getBoolean(KEY_IN_VEHICLE, false)) "in a vehicle" else "left the vehicle"}" +
+                " at ${UsageMonitorService.formatTime(context, reportedAt)}"
+        }
+        return "pause when driving: ${FocusSettings.pauseWhenDriving(context)}, " +
+            "motion detection: ${FocusSettings.detectVehicle(context)} (permission: ${hasActivityPermission(context)}, $report)"
+    }
+
     /** Whether only the phone's motion says "driving" now: then "I'm not driving" is worth offering. */
     fun isOnlyMotion(context: Context, now: Long = System.currentTimeMillis()): Boolean =
         !carConnected && !isCarMode(context) && isDriving(context, now)
@@ -124,7 +155,7 @@ object DrivingDetector {
     }
 
     internal fun onVehicle(context: Context, entered: Boolean, now: Long = System.currentTimeMillis()) {
-        Log.i(TAG, if (entered) "in a vehicle" else "left the vehicle")
+        FocusLog.i(context, if (entered) "motion: in a vehicle" else "motion: left the vehicle")
         prefs(context).edit().putBoolean(KEY_IN_VEHICLE, entered).putLong(KEY_REPORTED_AT, now).apply()
     }
 

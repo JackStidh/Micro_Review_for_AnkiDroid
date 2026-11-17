@@ -215,7 +215,10 @@ class UsageMonitorService : Service() {
         // Not now: the card stays due and comes as soon as nothing is in the way.
         val pause = FocusState.pauseReason(this)
         if (pause != null) {
-            if (pause != loggedPause) FocusLog.i(this, "card due, held back: ${pause.name.lowercase()}")
+            if (pause != loggedPause) {
+                val detail = if (pause == Interruptions.Reason.DRIVING) ": ${DrivingDetector.signals(this)}" else ""
+                FocusLog.i(this, "card due, held back: ${pause.name.lowercase()}$detail")
+            }
             loggedPause = pause
             return
         }
@@ -257,7 +260,9 @@ class UsageMonitorService : Service() {
         // Most apps aren't gated: no need to look for a due card.
         if (app !in gated || app == pass) return
         if (FocusState.gatePaused(this)) {
-            FocusLog.i(this, "gate open for $app: paused (${FocusState.pauseReason(this)?.name?.lowercase() ?: "snoozed"})")
+            val reason = FocusState.pauseReason(this)
+            val detail = if (reason == Interruptions.Reason.DRIVING) ": ${DrivingDetector.signals(this)}" else ""
+            FocusLog.i(this, "gate open for $app: paused (${reason?.name?.lowercase() ?: "snoozed"}$detail)")
             return
         }
         val hasDueCard = hasDueCard()
