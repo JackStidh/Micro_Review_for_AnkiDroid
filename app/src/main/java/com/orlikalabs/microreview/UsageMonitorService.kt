@@ -251,7 +251,7 @@ class UsageMonitorService : Service() {
     private fun gate(app: String) {
         if (!FocusSettings.gateEnabled(this)) return
         val before = FocusSettings.gatePass(this)
-        val pass = GateRules.passAfter(before, app, packageName)
+        val pass = GateRules.passAfter(before, app)
         if (pass != before) FocusSettings.setGatePass(this, pass)
         val gated = FocusSettings.gatedApps(this)
         // Most apps aren't gated: no need to look for a due card.

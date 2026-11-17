@@ -53,11 +53,12 @@ object GateRules {
         foreground != pass
 
     /**
-     * The pass once [foreground] came to the front: kept while the user is in the app that holds it, in this app
-     * (the gate itself) or under a system window; lost as soon as any other app is opened.
+     * The pass once [foreground] came to the front: kept while the user is in the app that holds it or under a
+     * system window; lost as soon as any other app is opened, this one included (the gate is an overlay, not one
+     * of its screens).
      */
-    fun passAfter(pass: String?, foreground: String, ownPackage: String): String? =
-        if (pass != null && (foreground == pass || foreground == ownPackage || foreground in TRANSIENT_PACKAGES)) pass else null
+    fun passAfter(pass: String?, foreground: String): String? =
+        if (pass != null && (foreground == pass || foreground in TRANSIENT_PACKAGES)) pass else null
 
     /** Emergency skips left today. [usedDay] is the day (epoch day) [used] was counted on. */
     fun skipsLeft(perDay: Int, usedDay: Long, used: Int, today: Long): Int =

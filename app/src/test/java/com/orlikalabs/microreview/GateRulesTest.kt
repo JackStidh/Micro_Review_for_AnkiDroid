@@ -43,21 +43,28 @@ class GateRulesTest {
     @Test
     fun closingAndOpeningAgainAsksAgain() {
         // Paid, in the app: the pass holds.
-        var pass = GateRules.passAfter(instagram, instagram, own)
+        var pass = GateRules.passAfter(instagram, instagram)
         assertEquals(instagram, pass)
         // Home: the pass is gone, with no grace period.
-        pass = GateRules.passAfter(pass, launcher, own)
+        pass = GateRules.passAfter(pass, launcher)
         assertNull(pass)
-        pass = GateRules.passAfter(pass, instagram, own)
+        pass = GateRules.passAfter(pass, instagram)
         assertTrue(mustGate(instagram, pass = pass))
     }
 
     @Test
-    fun theGateAndSystemWindowsKeepThePass() {
-        assertEquals(instagram, GateRules.passAfter(instagram, own, own))
-        assertEquals(instagram, GateRules.passAfter(instagram, "com.android.systemui", own))
-        assertEquals(instagram, GateRules.passAfter(instagram, "com.google.android.permissioncontroller", own))
-        assertNull(GateRules.passAfter(null, instagram, own))
+    fun systemWindowsKeepThePass() {
+        assertEquals(instagram, GateRules.passAfter(instagram, "com.android.systemui"))
+        assertEquals(instagram, GateRules.passAfter(instagram, "com.google.android.permissioncontroller"))
+        assertNull(GateRules.passAfter(null, instagram))
+    }
+
+    @Test
+    fun openingThisAppEndsThePass() {
+        // Instagram, then Micro Review's settings, then Instagram again: asks again.
+        val pass = GateRules.passAfter(instagram, own)
+        assertNull(pass)
+        assertTrue(mustGate(instagram, pass = GateRules.passAfter(pass, instagram)))
     }
 
     @Test
