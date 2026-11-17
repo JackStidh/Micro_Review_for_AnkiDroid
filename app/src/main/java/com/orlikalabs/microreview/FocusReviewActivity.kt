@@ -1,16 +1,15 @@
 package com.orlikalabs.microreview
 
-import android.app.Activity
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
-import android.window.OnBackInvokedDispatcher
+import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import java.time.LocalDate
 import java.util.concurrent.Executors
 
@@ -24,9 +23,9 @@ import java.util.concurrent.Executors
  * The card is on screen from the moment it is shown to its answer, so the time recorded with the answer is exact;
  * a card left unanswered doesn't count any. Closed when it is left, like the review screen of "Open after unlock".
  *
- * A plain activity with a layout, not Compose: it has to open instantly over another app.
+ * A layout, not Compose: it has to open instantly over another app.
  */
-class FocusReviewActivity : Activity() {
+class FocusReviewActivity : ComponentActivity() {
     enum class Mode { GATE, NUDGE, SESSION }
 
     private var mode = Mode.SESSION
@@ -81,9 +80,10 @@ class FocusReviewActivity : Activity() {
             revealed = true
             render()
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT) { leave() }
-        }
+        // Back, button or gesture: out of the gate means out of the gated app.
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() = leave()
+        })
         readIntent(intent)
     }
 
@@ -129,11 +129,6 @@ class FocusReviewActivity : Activity() {
     override fun onDestroy() {
         io.shutdown()
         super.onDestroy()
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        leave()
     }
 
     /** Back: out of the gate means out of the gated app, to the home screen. */
