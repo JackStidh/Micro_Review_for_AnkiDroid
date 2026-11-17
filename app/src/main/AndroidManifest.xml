@@ -18,6 +18,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- "Also when moving in a vehicle" (DrivingDetector): optional, asked when the setting is turned on. -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <!-- "While a Bluetooth device is connected" (BluetoothState): audio devices need nothing; every device needs
+         "Nearby devices" (Android 12+), asked when the setting is turned on, or the old permission before. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
 
     <queries>
         <!-- Android Auto's connection state, to hold cards back while driving (DrivingDetector). -->

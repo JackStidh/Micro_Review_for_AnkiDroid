@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The full-screen review (FocusReviewActivity): the app gate, a full-screen nudge, or a "Keep going" session.
+<!-- The full-screen card (FocusCardController), in an overlay over the app in use (CardOverlay) or in
+     FocusReviewActivity: the app gate, a nudge, or a "Keep going" session.
      Question, "Show answer", then the answer and the answer buttons; under them, what the mode offers
      (emergency skip, snooze, done). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -24,6 +25,7 @@
         android:textAppearance="@android:style/TextAppearance.Material.Caption" />
 
     <ScrollView
+        android:id="@+id/focusScroll"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -59,6 +61,17 @@
                 android:gravity="center"
                 android:textAppearance="@android:style/TextAppearance.Material.Subhead"
                 android:textSize="20sp"
+                android:visibility="gone" />
+
+            <!-- The note's fields the card didn't show (NoteFields). -->
+            <TextView
+                android:id="@+id/focusFields"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:lineSpacingMultiplier="1.15"
+                android:textAppearance="@android:style/TextAppearance.Material.Body1"
+                android:textSize="16sp"
                 android:visibility="gone" />
 
             <TextView
@@ -115,6 +128,52 @@
             android:background="@drawable/bg_pill_easy"
             android:text="@string/easy"
             android:textColor="@color/easy_button_text" />
+    </LinearLayout>
+
+    <!-- Snooze lengths, under "Snooze" (FocusCardController). -->
+    <LinearLayout
+        android:id="@+id/focusSnoozeRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <Button
+            android:id="@+id/focusSnooze1"
+            style="@android:style/Widget.Material.Button.Borderless.Colored"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/snooze_15_minutes"
+            android:textAllCaps="false" />
+
+        <Button
+            android:id="@+id/focusSnooze2"
+            style="@android:style/Widget.Material.Button.Borderless.Colored"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/snooze_1_hour"
+            android:textAllCaps="false" />
+
+        <Button
+            android:id="@+id/focusSnooze3"
+            style="@android:style/Widget.Material.Button.Borderless.Colored"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/snooze_3_hours"
+            android:textAllCaps="false" />
+
+        <Button
+            android:id="@+id/focusSnooze4"
+            style="@android:style/Widget.Material.Button.Borderless.Colored"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/snooze_until_tomorrow"
+            android:textAllCaps="false" />
     </LinearLayout>
 
     <LinearLayout

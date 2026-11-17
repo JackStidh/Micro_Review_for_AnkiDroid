@@ -23,16 +23,22 @@ object FocusState {
             driving = FocusSettings.pauseWhenDriving(context) && DrivingDetector.isDriving(context, now),
             doNotDisturb = FocusSettings.pauseOnDoNotDisturb(context) && isDoNotDisturbOn(context),
             inCall = FocusSettings.pauseInCall(context) && isInCall(context),
+            bluetooth = bluetoothPause(context),
         )
     }
 
+    private fun bluetoothPause(context: Context): Boolean =
+        FocusSettings.pauseOnBluetooth(context) && BluetoothState.isConnected(context)
+
     /**
-     * Whether the gate is lifted for now: while driving, and during a snooze only with "snooze also lifts the gate".
+     * Whether the gate is lifted for now: while driving or connected to Bluetooth (if chosen), and during a snooze
+     * only with "snooze also lifts the gate".
      * Quiet hours and Do Not Disturb don't lift it: they are about not being interrupted, and the gate only answers
      * the user's own tap on an app.
      */
     fun gatePaused(context: Context, now: Long = System.currentTimeMillis()): Boolean =
         (FocusSettings.pauseWhenDriving(context) && DrivingDetector.isDriving(context, now)) ||
+            bluetoothPause(context) ||
             (FocusSettings.snoozeLiftsGate(context) && QuietTime.isSnoozed(FocusSettings.snoozeUntil(context), now))
 
     fun snooze(context: Context, minutes: Int, now: Long = System.currentTimeMillis()) {

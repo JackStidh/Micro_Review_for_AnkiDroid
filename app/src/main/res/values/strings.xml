@@ -211,6 +211,11 @@
     <string name="snooze_1_hour">1 hour</string>
     <string name="snooze_2_hours">2 hours</string>
     <string name="snooze_until_tomorrow">Until tomorrow</string>
+    <string name="snooze">Snooze</string>
+    <string name="snooze_15_minutes">15 min</string>
+    <string name="snooze_3_hours">3 hours</string>
+    <string name="monitor_bluetooth">Bluetooth device connected: everything is paused.</string>
+    <string name="monitor_next_card">Next card in %1$d min of use.</string>
 
     <string name="gate_title">%1$s asks for cards first</string>
     <string name="gate_progress">%1$d of %2$d answered</string>
@@ -252,13 +257,16 @@
     <string name="focus_interval_default">Like other apps</string>
     <string name="focus_app_intervals">Own timing per app</string>
     <string name="focus_app_intervals_none">None. For example a card every 5 minutes on your biggest time wasters, or never on your maps app.</string>
-    <string name="focus_full_screen">Full-screen card</string>
-    <string name="focus_full_screen_detail">The card takes the whole screen instead of a notification: it can\'t be overlooked, and the time recorded is exact.</string>
+    <string name="focus_full_screen">Take over the screen</string>
+    <string name="focus_full_screen_detail">On: the card covers the app you\'re in until you answer or snooze it, and a video behind it pauses. Off: a pop-up notification instead; tap it to see the whole card.</string>
+    <string name="focus_show_now">Show a card now</string>
     <string name="focus_lifetime">Withdraw an untouched card after</string>
     <string name="focus_lifetime_detail">%1$d seconds. It stays due and comes back with the next card.</string>
 
     <string name="focus_answers">Answer buttons</string>
     <string name="focus_pass_fail">Pass / Fail only</string>
+    <string name="focus_note_fields">Show the note\'s fields under the answer</string>
+    <string name="focus_note_fields_detail">On the full-screen card: every field of the note the card didn\'t show, such as the meaning or the reading, so a definition left off the card\'s back is still there.</string>
     <string name="focus_pass_fail_detail">Pass records Good and Fail records Again. Hard and Easy are never offered, anywhere in the app.</string>
 
     <string name="focus_gate">App gate</string>
@@ -279,6 +287,10 @@
     <string name="focus_driving_detail">No cards, and the gate is open, while your phone is connected to a car screen (Android Auto) or in car mode.</string>
     <string name="focus_vehicle">Also when moving in a vehicle</string>
     <string name="focus_vehicle_detail">Uses your phone\'s motion, for cars without a screen. Needs the physical activity permission. Also true for a passenger: the monitor\'s notification then offers \"I\'m not driving\".</string>
+    <string name="focus_bluetooth">While a Bluetooth device is connected</string>
+    <string name="focus_bluetooth_detail">Everything pauses: no cards, the gate is open, no reviews at set times. For example in the car or with headphones at work.</string>
+    <string name="focus_bluetooth_permission">Detect every Bluetooth device</string>
+    <string name="focus_bluetooth_permission_detail">Without the \"Nearby devices\" permission, only Bluetooth audio (car, headphones, speakers) is detected, not watches or keyboards.</string>
     <string name="focus_dnd">During Do Not Disturb</string>
     <string name="focus_dnd_detail">No cards while Do Not Disturb or another mode silences notifications.</string>
     <string name="focus_call">During calls</string>
@@ -290,4 +302,8 @@
     <string name="focus_quiet_from">Quiet from</string>
     <string name="focus_quiet_to">Until</string>
     <string name="focus_open">Cards while you use your phone</string>
+    <string name="focus_diagnostics">Diagnostics</string>
+    <string name="focus_diagnostics_copy">Copy</string>
+    <string name="focus_diagnostics_copied">Copied: paste it where you report the problem.</string>
+    <string name="focus_diagnostics_refresh">Refresh</string>
 </resources>

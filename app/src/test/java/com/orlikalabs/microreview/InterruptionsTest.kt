@@ -14,7 +14,8 @@ class InterruptionsTest {
         driving: Boolean = false,
         doNotDisturb: Boolean = false,
         inCall: Boolean = false,
-    ) = Interruptions.reason(snoozed, quietHours, driving, doNotDisturb, inCall)
+        bluetooth: Boolean = false,
+    ) = Interruptions.reason(snoozed, quietHours, driving, doNotDisturb, inCall, bluetooth)
 
     @Test
     fun nothingInTheWay() {
@@ -28,6 +29,13 @@ class InterruptionsTest {
         assertEquals(Reason.DRIVING, reason(driving = true))
         assertEquals(Reason.DO_NOT_DISTURB, reason(doNotDisturb = true))
         assertEquals(Reason.IN_CALL, reason(inCall = true))
+        assertEquals(Reason.BLUETOOTH, reason(bluetooth = true))
+    }
+
+    @Test
+    fun bluetoothComesAfterDrivingAndBeforeTheRest() {
+        assertEquals(Reason.DRIVING, reason(driving = true, bluetooth = true))
+        assertEquals(Reason.BLUETOOTH, reason(bluetooth = true, quietHours = true, doNotDisturb = true, inCall = true))
     }
 
     @Test

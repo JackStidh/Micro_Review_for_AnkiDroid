@@ -14,11 +14,14 @@ object FocusSettings {
     private const val PREFS = "com.orlikalabs.microreview.focus"
 
     private const val KEY_NUDGES = "nudges_enabled"
-    private const val KEY_NUDGE_STYLE = "nudge_style"
+    /** "_2": the full-screen card became the default, whatever was chosen before. */
+    private const val KEY_NUDGE_STYLE = "nudge_style_2"
     private const val KEY_DEFAULT_INTERVAL = "default_interval_minutes"
     private const val KEY_APP_INTERVALS = "app_intervals"
     private const val KEY_NUDGE_LIFETIME = "nudge_lifetime_seconds"
     private const val KEY_PASS_FAIL = "pass_fail_only"
+    private const val KEY_NOTE_FIELDS = "show_note_fields"
+    private const val KEY_PAUSE_BLUETOOTH = "pause_on_bluetooth"
 
     private const val KEY_SNOOZE_UNTIL = "snooze_until"
     private const val KEY_SNOOZE_MINUTES = "snooze_minutes"
@@ -46,10 +49,13 @@ object FocusSettings {
 
     /** How a nudge shows its card. */
     enum class NudgeStyle {
-        /** A pop-up notification: Show answer, then Pass or Fail. */
+        /** A pop-up notification: Show answer, then Pass or Fail; tapping it opens the full card. */
         NOTIFICATION,
 
-        /** The card takes the whole screen (needs "Display over other apps"): it can't be overlooked, and the time is exact. */
+        /**
+         * The card takes the whole screen, over the app in use ([CardOverlay], needs "Display over other apps"): it
+         * can't be overlooked, and the time is exact. The default.
+         */
         FULL_SCREEN,
     }
 
@@ -62,7 +68,7 @@ object FocusSettings {
     fun nudgeStyle(context: Context): NudgeStyle =
         prefs(context).getString(KEY_NUDGE_STYLE, null)
             ?.let { name -> NudgeStyle.entries.firstOrNull { it.name == name } }
-            ?: NudgeStyle.NOTIFICATION
+            ?: NudgeStyle.FULL_SCREEN
 
     fun setNudgeStyle(context: Context, style: NudgeStyle) = prefs(context).edit().putString(KEY_NUDGE_STYLE, style.name).apply()
 
@@ -103,6 +109,11 @@ object FocusSettings {
 
     fun setPassFailOnly(context: Context, enabled: Boolean) = prefs(context).edit().putBoolean(KEY_PASS_FAIL, enabled).apply()
 
+    /** Under the answer of the full-screen card, the note's fields the card didn't show ([NoteFields]). */
+    fun showNoteFields(context: Context): Boolean = prefs(context).getBoolean(KEY_NOTE_FIELDS, true)
+
+    fun setShowNoteFields(context: Context, enabled: Boolean) = prefs(context).edit().putBoolean(KEY_NOTE_FIELDS, enabled).apply()
+
     // Snooze and pauses
 
     /** The end of the current snooze (epoch milliseconds), 0 for none. */
@@ -141,6 +152,11 @@ object FocusSettings {
     fun pauseOnDoNotDisturb(context: Context): Boolean = prefs(context).getBoolean(KEY_PAUSE_DND, true)
 
     fun setPauseOnDoNotDisturb(context: Context, enabled: Boolean) = prefs(context).edit().putBoolean(KEY_PAUSE_DND, enabled).apply()
+
+    /** Everything paused (cards, gate, scheduled reviews) while a Bluetooth device is connected ([BluetoothState]). */
+    fun pauseOnBluetooth(context: Context): Boolean = prefs(context).getBoolean(KEY_PAUSE_BLUETOOTH, true)
+
+    fun setPauseOnBluetooth(context: Context, enabled: Boolean) = prefs(context).edit().putBoolean(KEY_PAUSE_BLUETOOTH, enabled).apply()
 
     fun pauseInCall(context: Context): Boolean = prefs(context).getBoolean(KEY_PAUSE_CALL, true)
 

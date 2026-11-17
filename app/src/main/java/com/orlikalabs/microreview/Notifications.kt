@@ -306,6 +306,15 @@ class Notifications {
             builder.setTimeoutAfter(REVEALED_NUDGE_TIMEOUT_MS)
         }
         builder.setDeleteIntent(createIntent(context, NudgeSession.ACTION_DISMISSED))
+        // A tap opens the whole card: the pop-up only has room for its first lines.
+        builder.setContentIntent(
+            PendingIntent.getActivity(
+                context,
+                1,
+                FocusReviewActivity.nudgeIntent(context),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        )
     }
 
     /**

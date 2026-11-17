@@ -1,0 +1,221 @@
+package com.orlikalabs.microreview
+
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.Intent
+import android.graphics.Color
+import android.graphics.PixelFormat
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.view.ContextThemeWrapper
+import android.view.KeyEvent
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.view.WindowManager
+import android.widget.FrameLayout
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
+
+/**
+ * The full-screen card ([FocusCardController]) drawn over the app in use, in a window of its own ("Display over
+ * other apps"). Unlike an activity, it can be shown from the background at any time: Android blocks activity starts
+ * from the background, and the gate only worked while the app had just been in front.
+ *
+ * While shown, it holds the audio focus, so a video playing behind it pauses. Used on the main thread; [request],
+ * [onScreenOff] and [onForegroundChanged] may be called from any thread.
+ */
+object CardOverlay {
+    private val main = Handler(Looper.getMainLooper())
+
+    @Volatile
+    var isShowing = false
+        private set
+
+    @Volatile
+    private var shownMode: FocusCardController.Mode? = null
+
+    @Volatile
+    private var shownApp: String? = null
+
+    private var window: View? = null
+    private var controller: FocusCardController? = null
+    private var audioFocus: AudioFocusRequest? = null
+
+    /** Shows the card in [mode] ([app]: the gated app), from any thread. */
+    fun request(context: Context, mode: FocusCardController.Mode, app: String? = null) {
+        val appContext = context.applicationContext
+        main.post { show(appContext, mode, app) }
+    }
+
+    /** The screen went off: what was shown is no longer seen. */
+    fun onScreenOff(context: Context) {
+        val appContext = context.applicationContext
+        main.post { dismiss(appContext) }
+    }
+
+    /** [app] came to the front: a gate in front of another app goes away (the user left it). */
+    fun onForegroundChanged(context: Context, app: String) {
+        val appContext = context.applicationContext
+        main.post {
+            if (shownMode == FocusCardController.Mode.GATE && app != shownApp &&
+                app != appContext.packageName && app !in GateRules.TRANSIENT_PACKAGES
+            ) {
+                FocusLog.i(appContext, "gate closed: left for $app")
+                dismiss(appContext)
+            }
+        }
+    }
+
+    private fun show(context: Context, mode: FocusCardController.Mode, app: String?) {
+        if (!FocusState.canOpenOverApps(context)) {
+            FocusLog.i(context, "can't show the card: \"Display over other apps\" isn't allowed")
+            return
+        }
+        if (isShowing) {
+            if (mode == shownMode && app == shownApp) return
+            // A gate isn't replaced by a nudge: it asks for cards already.
+            if (shownMode == FocusCardController.Mode.GATE && mode != FocusCardController.Mode.GATE) return
+            dismiss(context)
+        }
+        val themed = ContextThemeWrapper(context, R.style.Theme_AnkiNotifications)
+        val content = LayoutInflater.from(themed).inflate(R.layout.focus_review, null)
+        // The frame takes the system bars' room; the layout keeps its own padding.
+        content.fitsSystemWindows = false
+        val frame = OverlayFrame(themed) { controller?.onBack() }
+        frame.fitsSystemWindows = true
+        frame.setBackgroundColor(backgroundColor(themed))
+        frame.addView(content, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+
+        val host = object : FocusCardController.Host {
+            override fun close() = dismiss(context)
+
+            override fun leaveApp() {
+                FocusLog.i(context, "gate left")
+                try {
+                    // Allowed while this window is visible.
+                    context.startActivity(
+                        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                } catch (e: Exception) {
+                    FocusLog.i(context, "couldn't go home: $e")
+                }
+                dismiss(context)
+            }
+        }
+        val card = FocusCardController(themed, content, host)
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+            PixelFormat.OPAQUE,
+        ).apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+            title = "Micro Review card"
+        }
+        try {
+            windowManager(context).addView(frame, params)
+        } catch (e: Exception) {
+            FocusLog.i(context, "can't show the card: $e")
+            return
+        }
+        window = frame
+        controller = card
+        isShowing = true
+        shownMode = mode
+        shownApp = app
+        requestAudioFocus(context)
+        FocusLog.i(context, "card shown: ${mode.name.lowercase()}${app?.let { " for $it" }.orEmpty()}")
+        card.start(mode, app)
+    }
+
+    private fun dismiss(context: Context) {
+        val shown = window ?: return
+        val wasGate = shownMode == FocusCardController.Mode.GATE
+        controller?.stop()
+        controller = null
+        window = null
+        isShowing = false
+        shownMode = null
+        shownApp = null
+        try {
+            windowManager(context).removeViewImmediate(shown)
+        } catch (e: Exception) {
+            // Already removed.
+        }
+        abandonAudioFocus(context)
+        // Closed without its cards, with the gated app maybe still in front: the monitor looks at it again.
+        if (wasGate) UsageMonitorService.requestRecheck()
+    }
+
+    private fun windowManager(context: Context) = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
+    private fun backgroundColor(context: Context): Int {
+        val attributes = context.obtainStyledAttributes(intArrayOf(android.R.attr.colorBackground))
+        val color = attributes.getColor(0, Color.WHITE)
+        attributes.recycle()
+        return color
+    }
+
+    private fun requestAudioFocus(context: Context) {
+        val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+            )
+            .build()
+        try {
+            audio.requestAudioFocus(request)
+            audioFocus = request
+        } catch (e: Exception) {
+            // Not essential.
+        }
+    }
+
+    private fun abandonAudioFocus(context: Context) {
+        val request = audioFocus ?: return
+        audioFocus = null
+        (context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager)?.abandonAudioFocusRequest(request)
+    }
+
+    /** The overlay's root: passes back, button or gesture, to [onBack]. */
+    @SuppressLint("ViewConstructor")
+    private class OverlayFrame(context: Context, private val onBack: () -> Unit) : FrameLayout(context) {
+        private var backCallback: Any? = null
+
+        override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+            if (event.keyCode == KeyEvent.KEYCODE_BACK) {
+                if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) onBack()
+                return true
+            }
+            return super.dispatchKeyEvent(event)
+        }
+
+        override fun onAttachedToWindow() {
+            super.onAttachedToWindow()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val callback = OnBackInvokedCallback { onBack() }
+                findOnBackInvokedDispatcher()?.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, callback)
+                backCallback = callback
+            }
+        }
+
+        override fun onDetachedFromWindow() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                (backCallback as? OnBackInvokedCallback)?.let { findOnBackInvokedDispatcher()?.unregisterOnBackInvokedCallback(it) }
+            }
+            backCallback = null
+            super.onDetachedFromWindow()
+        }
+    }
+}

@@ -34,7 +34,25 @@ object AnkiDroidContract {
     /** Notes. A card's content: `notes/<note id>/cards/<card ord>`, with the [Card] columns. */
     object Note {
         val CONTENT_URI: Uri = Uri.withAppendedPath(AUTHORITY_URI, "notes")
+
+        /** The note type's id. */
+        const val MID = "mid"
+
+        /** The field values, joined with [FIELD_SEPARATOR]. */
+        const val FLDS = "flds"
     }
+
+    /** Note types: `models/<model id>`. */
+    object Model {
+        val CONTENT_URI: Uri = Uri.withAppendedPath(AUTHORITY_URI, "models")
+
+        /** The field names, in order, joined with [FIELD_SEPARATOR]. */
+        const val FIELD_NAMES = "field_names"
+    }
+
+    /** Separates the fields of [Note.FLDS] and [Model.FIELD_NAMES]. */
+    const val FIELD_SEPARATOR = '\u001f'
+
 
     object Card {
         const val QUESTION_SIMPLE = "question_simple"

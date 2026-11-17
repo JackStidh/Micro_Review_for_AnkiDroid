@@ -1,6 +1,8 @@
 package com.orlikalabs.microreview
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -64,6 +66,19 @@ class NudgeClockTest {
         // The process was paused for an hour between two ticks: at most a few seconds count.
         assertFalse(clock.tick("a", 60 * 60_000L, perApp, 20))
         assertFalse(clock.tick("a", -5, perApp, 20))
+    }
+
+    @Test
+    fun remainingTimeIsShownPerApp() {
+        val clock = NudgeClock()
+        assertEquals(5 * 60_000L, clock.remainingMs(instagram, perApp, 20))
+        clock.spend(instagram, 2)
+        assertEquals(3 * 60_000L, clock.remainingMs(instagram, perApp, 20))
+        assertEquals(20 * 60_000L, clock.remainingMs("a", perApp, 20))
+        assertNull(clock.remainingMs(maps, perApp, 20))
+        assertNull(clock.remainingMs("a", perApp, NudgeClock.NEVER))
+        clock.spend(instagram, 10)
+        assertEquals(0L, clock.remainingMs(instagram, perApp, 20))
     }
 
     @Test

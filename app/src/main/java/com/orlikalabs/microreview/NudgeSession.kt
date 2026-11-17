@@ -5,8 +5,10 @@ import android.content.Context
 import android.util.Log
 
 /**
- * A nudge: the current card offered while the phone is in use, when [UsageMonitorService] says one is due. With
- * nudges on, the card notification is only posted for the length of a nudge ([LockSession.mayPostNow]): it is
+ * A nudge: the current card offered while the phone is in use, when [UsageMonitorService] says one is due. By
+ * default it takes the screen, over the app in use ([CardOverlay]). Otherwise, or without "Display over other apps",
+ * it is a pop-up notification. With nudges on, the card notification is only posted for the length of a nudge
+ * ([LockSession.mayPostNow]): it is
  * never on the lock screen, and it is withdrawn when it is no longer looked at (screen off, ignored, swiped), so
  * the time recorded with an answer is time actually spent on the card.
  *
@@ -32,7 +34,8 @@ object NudgeSession {
     fun isPrompting(context: Context): Boolean = prefs(context).getBoolean(KEY_PROMPTING, false)
 
     /** Whether a nudge is in progress: no other one starts meanwhile. */
-    fun isBusy(context: Context): Boolean = isActive(context) || isPrompting(context) || FocusReviewActivity.isShown
+    fun isBusy(context: Context): Boolean =
+        isActive(context) || isPrompting(context) || FocusReviewActivity.isShown || CardOverlay.isShowing
 
     /**
      * Offers the current card, checked against AnkiDroid first. Does ContentProvider I/O: call it off the main thread.
@@ -45,13 +48,16 @@ object NudgeSession {
         } catch (e: Exception) {
             Log.e(TAG, "could not check the card before a nudge", e)
         }
-        val state = AnkiDroidHelper(context).storedState?.takeIf { it.hasCard() } ?: return false
+        val state = AnkiDroidHelper(context).storedState?.takeIf { it.hasCard() }
+        if (state == null) {
+            FocusLog.i(context, "card due, but nothing to review")
+            return false
+        }
         if (FocusSettings.nudgeStyle(context) == FocusSettings.NudgeStyle.FULL_SCREEN && FocusState.canOpenOverApps(context)) {
-            Log.i(TAG, "nudge: opening the card full screen")
-            context.startActivity(FocusReviewActivity.nudgeIntent(context))
+            CardOverlay.request(context, FocusCardController.Mode.NUDGE)
             return true
         }
-        Log.i(TAG, "nudge: posting the card")
+        FocusLog.i(context, "card posted as a notification")
         val card = state.toCardInfo()
         // A card shown before and withdrawn starts over: its answer hidden, its time from now.
         CardReview.hideAnswer(context)
@@ -73,6 +79,13 @@ object NudgeSession {
         prefs.edit().putBoolean(KEY_ACTIVE, false).putBoolean(KEY_PROMPTING, false).commit()
         ReviewTimer.clear(context)
         CardReview.hideAnswer(context)
+        LockSession.markHidden(context)
+        notificationManager(context).cancel(Notifications.NOTIFICATION_ID)
+    }
+
+    /** The notification's card was tapped: it continues full screen ([FocusReviewActivity]), its timer running. */
+    fun handOver(context: Context) {
+        prefs(context).edit().putBoolean(KEY_ACTIVE, false).putBoolean(KEY_PROMPTING, false).commit()
         LockSession.markHidden(context)
         notificationManager(context).cancel(Notifications.NOTIFICATION_ID)
     }

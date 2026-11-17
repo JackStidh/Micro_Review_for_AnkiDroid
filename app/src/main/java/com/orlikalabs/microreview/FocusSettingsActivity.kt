@@ -5,6 +5,8 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.app.TimePickerDialog
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -20,6 +22,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Switch
 import android.widget.TextView
+import android.widget.Toast
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.concurrent.thread
@@ -63,6 +66,7 @@ class FocusSettingsActivity : Activity() {
         if (requestCode == REQUEST_ACTIVITY && !DrivingDetector.hasActivityPermission(this)) {
             FocusSettings.setDetectVehicle(this, false)
         }
+        // Bluetooth without "Nearby devices" still works for audio devices: the setting stays.
         changed()
     }
 
@@ -82,6 +86,7 @@ class FocusSettingsActivity : Activity() {
         answerSection()
         gateSection()
         pauseSection()
+        diagnosticsSection()
     }
 
     // What still has to be allowed
@@ -196,6 +201,14 @@ class FocusSettingsActivity : Activity() {
             withApps { apps -> pickApp(apps) { app -> pickAppInterval(app) } }
         }
 
+        button(getString(R.string.focus_show_now)) {
+            val context = applicationContext
+            thread {
+                val shown = NudgeSession.fire(context)
+                if (!shown) runOnUiThread { Toast.makeText(context, R.string.all_cards_done, Toast.LENGTH_SHORT).show() }
+            }
+        }
+
         val fullScreen = FocusSettings.nudgeStyle(this) == FocusSettings.NudgeStyle.FULL_SCREEN
         toggle(getString(R.string.focus_full_screen), getString(R.string.focus_full_screen_detail), fullScreen) {
             FocusSettings.setNudgeStyle(this, if (it) FocusSettings.NudgeStyle.FULL_SCREEN else FocusSettings.NudgeStyle.NOTIFICATION)
@@ -237,6 +250,9 @@ class FocusSettingsActivity : Activity() {
             FocusSettings.setPassFailOnly(this, it)
             val context = applicationContext
             thread { StandardCardWidget.updateAll(context) }
+        }
+        toggle(getString(R.string.focus_note_fields), getString(R.string.focus_note_fields_detail), FocusSettings.showNoteFields(this)) {
+            FocusSettings.setShowNoteFields(this, it)
         }
     }
 
@@ -308,6 +324,16 @@ class FocusSettingsActivity : Activity() {
                 }
             }
         }
+        val bluetooth = FocusSettings.pauseOnBluetooth(this)
+        toggle(getString(R.string.focus_bluetooth), getString(R.string.focus_bluetooth_detail), bluetooth) {
+            FocusSettings.setPauseOnBluetooth(this, it)
+            if (it) askBluetoothPermission()
+        }
+        if (bluetooth && !BluetoothState.hasPermission(this)) {
+            action(getString(R.string.focus_bluetooth_permission), getString(R.string.focus_bluetooth_permission_detail), getString(R.string.focus_setup_allow)) {
+                askBluetoothPermission()
+            }
+        }
         toggle(getString(R.string.focus_dnd), getString(R.string.focus_dnd_detail), FocusSettings.pauseOnDoNotDisturb(this)) {
             FocusSettings.setPauseOnDoNotDisturb(this, it)
         }
@@ -335,6 +361,55 @@ class FocusSettingsActivity : Activity() {
                 changed()
             }
         }
+    }
+
+    private fun askBluetoothPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !BluetoothState.hasPermission(this)) {
+            requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT), REQUEST_BLUETOOTH)
+        }
+    }
+
+    // Diagnostics
+
+    /** What the monitor sees and did: to tell why a card or the gate didn't come. */
+    private fun diagnosticsSection() {
+        header(getString(R.string.focus_diagnostics))
+        val report = diagnostics()
+        val view = text(report, android.R.style.TextAppearance_Material_Caption)
+        view.typeface = android.graphics.Typeface.MONOSPACE
+        view.setTextIsSelectable(true)
+        content.addView(view)
+        val row = row()
+        rowButton(row, getString(R.string.focus_diagnostics_copy)) {
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("Micro Review diagnostics", diagnostics()))
+            Toast.makeText(this, R.string.focus_diagnostics_copied, Toast.LENGTH_SHORT).show()
+        }
+        rowButton(row, getString(R.string.focus_diagnostics_refresh)) { rebuild() }
+    }
+
+    private fun diagnostics(): String {
+        fun yes(value: Boolean) = if (value) "yes" else "NO"
+        val status = MonitorStatus
+        val next = status.nextCardMs?.let { "${it / 60_000} min ${it / 1000 % 60} s" } ?: "none"
+        val lastLook = if (status.lastStepAt == 0L) "never" else "${(System.currentTimeMillis() - status.lastStepAt) / 1000} s ago"
+        val lines = mutableListOf(
+            "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
+            "Usage access: ${yes(FocusState.hasUsageAccess(this))}",
+            "Display over other apps: ${yes(FocusState.canOpenOverApps(this))}",
+            "Notifications allowed: ${yes(notificationsAllowed())}",
+            "Monitor running: ${yes(status.running)}, watching: ${yes(status.polling)}, last look: $lastLook",
+            "App in front: ${status.foreground ?: "unknown"}",
+            "Next card: $next",
+            "Paused: ${status.pauseReason?.name?.lowercase() ?: "no"}",
+            "Bluetooth connected: ${yes(BluetoothState.isConnected(this))} (nearby devices allowed: ${yes(BluetoothState.hasPermission(this))})",
+            "Card style: ${FocusSettings.nudgeStyle(this).name.lowercase()}, default every ${FocusSettings.defaultIntervalMinutes(this)} min, per app: ${FocusSettings.appIntervals(this)}",
+            "Gated: ${FocusSettings.gatedApps(this)}, pass: ${FocusSettings.gatePass(this) ?: "none"}",
+            "",
+            "Recent events:",
+        )
+        lines += FocusLog.lines(this).takeLast(DIAGNOSTIC_LINES).reversed()
+        return lines.joinToString("\n")
     }
 
     private fun pickTime(titleRes: Int, initial: Int, onPicked: (Int) -> Unit) {
@@ -496,6 +571,8 @@ class FocusSettingsActivity : Activity() {
     companion object {
         private const val REQUEST_ACTIVITY = 1
         private const val REQUEST_NOTIFICATIONS = 2
+        private const val REQUEST_BLUETOOTH = 3
+        private const val DIAGNOSTIC_LINES = 60
         private val DEFAULT_INTERVALS = listOf(NudgeClock.NEVER, 5, 10, 15, 20, 30, 45, 60, 90, 120)
         private val APP_INTERVALS = listOf(NudgeClock.NEVER, 2, 3, 5, 10, 15, 20, 30, 60)
         private val SNOOZE_LENGTHS = listOf(15, 30, 60, 120, 240)

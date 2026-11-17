@@ -31,6 +31,20 @@ class NudgeClock {
         return sharedMs >= defaultMinutes * MS_PER_MINUTE
     }
 
+    /**
+     * How long until a card is due in [foreground], in milliseconds (0 when due), or null when no card comes there.
+     * Shown to the user; [tick] decides.
+     */
+    fun remainingMs(foreground: String?, perApp: Map<String, Int>, defaultMinutes: Int): Long? {
+        val own = foreground?.let { perApp[it] }
+        if (foreground != null && own != null) {
+            if (own <= NEVER) return null
+            return (own * MS_PER_MINUTE - (perAppMs[foreground] ?: 0L)).coerceAtLeast(0)
+        }
+        if (defaultMinutes <= NEVER) return null
+        return (defaultMinutes * MS_PER_MINUTE - sharedMs).coerceAtLeast(0)
+    }
+
     /** A card was offered (or the user is studying anyway) while in [foreground]: its interval starts over. */
     fun reset(foreground: String?, perApp: Map<String, Int>) {
         if (foreground != null && perApp.containsKey(foreground)) perAppMs.remove(foreground) else sharedMs = 0
