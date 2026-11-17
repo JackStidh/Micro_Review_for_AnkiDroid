@@ -10,6 +10,7 @@
         <include domain="sharedpref" path="com.ankidroid.companion.scheduled_review_settings.xml" />
         <include domain="sharedpref" path="com.ankidroid.companion.wallpaper_style.xml" />
         <include domain="sharedpref" path="com.ankidroid.companion.widget_style.xml" />
+        <include domain="sharedpref" path="com.orlikalabs.microreview.focus.xml" />
         <include domain="file" path="wallpaper_background.jpg" />
         <include domain="file" path="widget_background.jpg" />
     </cloud-backup>
@@ -19,6 +20,7 @@
         <include domain="sharedpref" path="com.ankidroid.companion.scheduled_review_settings.xml" />
         <include domain="sharedpref" path="com.ankidroid.companion.wallpaper_style.xml" />
         <include domain="sharedpref" path="com.ankidroid.companion.widget_style.xml" />
+        <include domain="sharedpref" path="com.orlikalabs.microreview.focus.xml" />
         <include domain="file" path="wallpaper_background.jpg" />
         <include domain="file" path="widget_background.jpg" />
     </device-transfer>
