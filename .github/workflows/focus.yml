@@ -72,7 +72,8 @@ jobs:
     # The log only names the first finding: list every error, to fix them without the HTML report.
     - name: Lint errors
       if: always()
-      run: grep -h -A3 ": Error:" app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt || true
+      run: |
+        grep -h -A3 ": Error:" app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt || true
 
     - name: Upload the lint report
       if: always()
