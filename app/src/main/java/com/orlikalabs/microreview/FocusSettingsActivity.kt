@@ -29,7 +29,7 @@ import kotlin.concurrent.thread
 
 /**
  * Settings of the cards that come while the phone is in use: what still has to be allowed, snooze, nudges and
- * their timing per app, the answer buttons, the app gate, and when cards stay away (driving, quiet hours, Do Not
+ * their timing per app, the answer buttons, the app gate, and when cards stay away (Bluetooth, quiet hours, Do Not
  * Disturb, calls). Opened from the main screen and from the monitor's notification.
  *
  * Built from plain views in code: every row is a title, a summary and a switch or a button, rebuilt after each change.
@@ -63,9 +63,6 @@ class FocusSettingsActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_ACTIVITY && !DrivingDetector.hasActivityPermission(this)) {
-            FocusSettings.setDetectVehicle(this, false)
-        }
         // Bluetooth without "Nearby devices" still works for audio devices: the setting stays.
         changed()
     }
@@ -311,19 +308,6 @@ class FocusSettingsActivity : Activity() {
 
     private fun pauseSection() {
         header(getString(R.string.focus_pauses))
-        val driving = FocusSettings.pauseWhenDriving(this)
-        toggle(getString(R.string.focus_driving), getString(R.string.focus_driving_detail), driving) {
-            FocusSettings.setPauseWhenDriving(this, it)
-        }
-        if (driving) {
-            val motion = FocusSettings.detectVehicle(this) && DrivingDetector.hasActivityPermission(this)
-            toggle(getString(R.string.focus_vehicle), getString(R.string.focus_vehicle_detail), motion) {
-                FocusSettings.setDetectVehicle(this, it)
-                if (it && !DrivingDetector.hasActivityPermission(this) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    requestPermissions(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION), REQUEST_ACTIVITY)
-                }
-            }
-        }
         val bluetooth = FocusSettings.pauseOnBluetooth(this)
         toggle(getString(R.string.focus_bluetooth), getString(R.string.focus_bluetooth_detail), bluetooth) {
             FocusSettings.setPauseOnBluetooth(this, it)
@@ -402,7 +386,6 @@ class FocusSettingsActivity : Activity() {
             "App in front: ${status.foreground ?: "unknown"}",
             "Next card: $next",
             "Paused: ${status.pauseReason?.name?.lowercase() ?: "no"}",
-            "Driving signs: ${DrivingDetector.signals(this)}; ${DrivingDetector.details(this)}",
             "Bluetooth connected: ${yes(BluetoothState.isConnected(this))} (nearby devices allowed: ${yes(BluetoothState.hasPermission(this))})",
             "Card style: ${FocusSettings.nudgeStyle(this).name.lowercase()}, default every ${FocusSettings.defaultIntervalMinutes(this)} min, per app: ${FocusSettings.appIntervals(this)}",
             "Gated: ${FocusSettings.gatedApps(this)}, pass: ${FocusSettings.gatePass(this) ?: "none"}",
@@ -570,7 +553,6 @@ class FocusSettingsActivity : Activity() {
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     companion object {
-        private const val REQUEST_ACTIVITY = 1
         private const val REQUEST_NOTIFICATIONS = 2
         private const val REQUEST_BLUETOOTH = 3
         private const val DIAGNOSTIC_LINES = 60

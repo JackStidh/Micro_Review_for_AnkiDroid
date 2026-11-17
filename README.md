@@ -11,8 +11,8 @@ Micro Review for AnkiDroid is an extension app for the AnkiDroid flashcard app. 
 > **This is the `focus` branch**: a personal build on top of Micro Review, for reviewing while the phone is in use
 > instead of on the lock screen. It adds **Pass / Fail only** answers, **nudges** (a card every few minutes of phone
 > use, with its own timing per app, never on the lock screen), **Keep going** after a card, an **app gate** (cards
-> before chosen apps open, one emergency skip a day), **snooze**, **quiet hours**, and no cards **while driving**,
-> during Do Not Disturb or in a call. Open it with the bell icon on the main screen. It installs next to the
+> before chosen apps open, one emergency skip a day), **snooze**, **quiet hours**, and no cards **while a Bluetooth
+> device is connected** (car, headphones), during Do Not Disturb or in a call. Open it with the bell icon on the main screen. It installs next to the
 > upstream app under its own name, "Micro Review Focus". Details and the list of what is still to be checked on a
 > phone: [docs/focus/NOTES.md](docs/focus/NOTES.md).
 

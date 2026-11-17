@@ -134,10 +134,5 @@ dependencies {
     // talks to AnkiDroid's ContentProvider directly (AnkiDroidContract).
     androidTestImplementation("com.github.ankidroid:Anki-Android:v2.17alpha8")
     implementation("androidx.work:work-runtime:2.10.5")
-    // "Also when moving in a vehicle" (DrivingDetector): activity recognition, from Google Play services.
-    implementation("com.google.android.gms:play-services-location:21.3.0")
-    // Play services brings Fragment 1.0, too old for registerForActivityResult (lint
-    // InvalidFragmentVersionForActivityResult): a current one replaces it.
-    implementation("androidx.fragment:fragment-ktx:1.8.5")
 
 }

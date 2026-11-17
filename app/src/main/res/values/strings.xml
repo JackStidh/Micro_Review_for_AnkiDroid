@@ -202,11 +202,9 @@
     <string name="monitor_on_both">Cards come while you use your phone, and your chosen apps ask for cards first.</string>
     <string name="monitor_snoozed_until">Snoozed until %1$s.</string>
     <string name="monitor_quiet_hours">Quiet hours: no cards for now.</string>
-    <string name="monitor_driving">Driving: no cards, and the gate is open.</string>
     <string name="monitor_do_not_disturb">Do Not Disturb is on: no cards for now.</string>
     <string name="monitor_in_call">In a call: no cards for now.</string>
     <string name="monitor_resume">Resume</string>
-    <string name="monitor_not_driving">I\'m not driving</string>
     <string name="snooze_30_minutes">30 min</string>
     <string name="snooze_1_hour">1 hour</string>
     <string name="snooze_2_hours">2 hours</string>
@@ -283,10 +281,6 @@
     <string name="focus_gate_skips_detail">%1$d per day</string>
 
     <string name="focus_pauses">When cards stay away</string>
-    <string name="focus_driving">While driving</string>
-    <string name="focus_driving_detail">No cards, and the gate is open, while your phone is connected to a car screen (Android Auto) or in car mode.</string>
-    <string name="focus_vehicle">Also when moving in a vehicle</string>
-    <string name="focus_vehicle_detail">Uses your phone\'s motion, for cars without a screen. Needs the physical activity permission. Also true for a passenger: the monitor\'s notification then offers \"I\'m not driving\".</string>
     <string name="focus_bluetooth">While a Bluetooth device is connected</string>
     <string name="focus_bluetooth_detail">Everything pauses: no cards, the gate is open, no reviews at set times. For example in the car or with headphones at work.</string>
     <string name="focus_bluetooth_permission">Detect every Bluetooth device</string>

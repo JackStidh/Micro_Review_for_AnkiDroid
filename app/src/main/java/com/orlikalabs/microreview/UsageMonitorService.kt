@@ -215,10 +215,7 @@ class UsageMonitorService : Service() {
         // Not now: the card stays due and comes as soon as nothing is in the way.
         val pause = FocusState.pauseReason(this)
         if (pause != null) {
-            if (pause != loggedPause) {
-                val detail = if (pause == Interruptions.Reason.DRIVING) ": ${DrivingDetector.signals(this)}" else ""
-                FocusLog.i(this, "card due, held back: ${pause.name.lowercase()}$detail")
-            }
+            if (pause != loggedPause) FocusLog.i(this, "card due, held back: ${pause.name.lowercase()}")
             loggedPause = pause
             return
         }
@@ -260,9 +257,7 @@ class UsageMonitorService : Service() {
         // Most apps aren't gated: no need to look for a due card.
         if (app !in gated || app == pass) return
         if (FocusState.gatePaused(this)) {
-            val reason = FocusState.pauseReason(this)
-            val detail = if (reason == Interruptions.Reason.DRIVING) ": ${DrivingDetector.signals(this)}" else ""
-            FocusLog.i(this, "gate open for $app: paused (${reason?.name?.lowercase() ?: "snoozed"}$detail)")
+            FocusLog.i(this, "gate open for $app: paused (${FocusState.pauseReason(this)?.name?.lowercase() ?: "snoozed"})")
             return
         }
         val hasDueCard = hasDueCard()
@@ -305,8 +300,7 @@ class UsageMonitorService : Service() {
         val reason = FocusState.pauseReason(this)
         MonitorStatus.pauseReason = reason
         val minutesLeft = MonitorStatus.nextCardMs?.let { (it + 59_999) / 60_000 }
-        val state = "$reason:${FocusSettings.snoozeUntil(this)}:$minutesLeft:" +
-            "${reason == Interruptions.Reason.DRIVING && DrivingDetector.isOnlyMotion(this)}"
+        val state = "$reason:${FocusSettings.snoozeUntil(this)}:$minutesLeft"
         if (state == shownState) return
         shownState = state
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -360,7 +354,6 @@ class UsageMonitorService : Service() {
             } catch (e: Exception) {
                 FocusLog.i(appContext, "could not start the monitor: $e")
             }
-            DrivingDetector.updateVehicleReports(appContext)
         }
 
         /** A snooze started or ended from a button: the running monitor's notification says so right away. */
@@ -386,7 +379,6 @@ class UsageMonitorService : Service() {
             val text = when (pauseReason) {
                 Interruptions.Reason.SNOOZED -> context.getString(R.string.monitor_snoozed_until, formatTime(context, FocusSettings.snoozeUntil(context)))
                 Interruptions.Reason.QUIET_HOURS -> context.getString(R.string.monitor_quiet_hours)
-                Interruptions.Reason.DRIVING -> context.getString(R.string.monitor_driving)
                 Interruptions.Reason.BLUETOOTH -> context.getString(R.string.monitor_bluetooth)
                 Interruptions.Reason.DO_NOT_DISTURB -> context.getString(R.string.monitor_do_not_disturb)
                 Interruptions.Reason.IN_CALL -> context.getString(R.string.monitor_in_call)
@@ -422,11 +414,6 @@ class UsageMonitorService : Service() {
             when (pauseReason) {
                 Interruptions.Reason.SNOOZED ->
                     builder.addAction(0, context.getString(R.string.monitor_resume), FocusActions.intent(context, FocusActions.ACTION_RESUME))
-                Interruptions.Reason.DRIVING ->
-                    // Only worth offering when motion alone says so: a passenger. A connected car screen is driving.
-                    if (DrivingDetector.isOnlyMotion(context)) {
-                        builder.addAction(0, context.getString(R.string.monitor_not_driving), FocusActions.intent(context, FocusActions.ACTION_NOT_DRIVING))
-                    }
                 Interruptions.Reason.BLUETOOTH -> Unit
                 else -> {
                     builder.addAction(0, context.getString(R.string.snooze_30_minutes), FocusActions.intent(context, FocusActions.ACTION_SNOOZE_PREFIX + 30))

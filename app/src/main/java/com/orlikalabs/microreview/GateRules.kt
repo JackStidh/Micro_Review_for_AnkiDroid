@@ -37,7 +37,7 @@ object GateRules {
      *
      * @param pass the app that holds a pass ([passAfter] with this same foreground change applied), or null
      * @param hasDueCard whether a card can be asked; with nothing due the gate stays open
-     * @param paused whether the gate is lifted for now (driving, or snoozed with "snooze also lifts the gate")
+     * @param paused whether the gate is lifted for now (Bluetooth, or snoozed with "snooze also lifts the gate")
      */
     fun mustGate(
         foreground: String,

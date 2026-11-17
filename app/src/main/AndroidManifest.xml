@@ -16,16 +16,12 @@
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <!-- "Also when moving in a vehicle" (DrivingDetector): optional, asked when the setting is turned on. -->
-    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <!-- "While a Bluetooth device is connected" (BluetoothState): audio devices need nothing; every device needs
          "Nearby devices" (Android 12+), asked when the setting is turned on, or the old permission before. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
 
     <queries>
-        <!-- Android Auto's connection state, to hold cards back while driving (DrivingDetector). -->
-        <package android:name="com.google.android.projection.gearhead" />
         <!-- The apps of the launcher, to choose the gated apps and the apps with their own timing. -->
         <intent>
             <action android:name="android.intent.action.MAIN" />
@@ -94,7 +90,6 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Shows the user's flashcards at intervals while the phone is in use and before apps the user chose, which needs the screen and app-in-front events for as long as the feature is on." />
         </service>
-        <receiver android:name=".VehicleReceiver" android:exported="false" />
         <receiver android:name=".NotificationReceiver"/>
         <receiver
             android:name=".StandardCardWidget"

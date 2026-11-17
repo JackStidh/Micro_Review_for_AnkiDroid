@@ -14,13 +14,12 @@ import java.time.ZonedDateTime
 /** The phone's state as far as cards are concerned: may one interrupt now, and what the monitor is allowed to see. */
 object FocusState {
 
-    /** Why no card may interrupt now ([Interruptions.Reason]), or null. May query Android Auto: call it off the main thread. */
+    /** Why no card may interrupt now ([Interruptions.Reason]), or null. */
     fun pauseReason(context: Context, now: Long = System.currentTimeMillis()): Interruptions.Reason? {
         val time = ZonedDateTime.now()
         return Interruptions.reason(
             snoozed = QuietTime.isSnoozed(FocusSettings.snoozeUntil(context), now),
             quietHours = QuietTime.isQuiet(FocusSettings.quietHours(context), time.hour * 60 + time.minute),
-            driving = FocusSettings.pauseWhenDriving(context) && DrivingDetector.isDriving(context, now),
             doNotDisturb = FocusSettings.pauseOnDoNotDisturb(context) && isDoNotDisturbOn(context),
             inCall = FocusSettings.pauseInCall(context) && isInCall(context),
             bluetooth = bluetoothPause(context),
@@ -31,14 +30,13 @@ object FocusState {
         FocusSettings.pauseOnBluetooth(context) && BluetoothState.isConnected(context)
 
     /**
-     * Whether the gate is lifted for now: while driving or connected to Bluetooth (if chosen), and during a snooze
+     * Whether the gate is lifted for now: while connected to Bluetooth (if chosen), and during a snooze
      * only with "snooze also lifts the gate".
      * Quiet hours and Do Not Disturb don't lift it: they are about not being interrupted, and the gate only answers
      * the user's own tap on an app.
      */
     fun gatePaused(context: Context, now: Long = System.currentTimeMillis()): Boolean =
-        (FocusSettings.pauseWhenDriving(context) && DrivingDetector.isDriving(context, now)) ||
-            bluetoothPause(context) ||
+        bluetoothPause(context) ||
             (FocusSettings.snoozeLiftsGate(context) && QuietTime.isSnoozed(FocusSettings.snoozeUntil(context), now))
 
     fun snooze(context: Context, minutes: Int, now: Long = System.currentTimeMillis()) {

@@ -8,7 +8,7 @@ import org.json.JSONObject
 /**
  * User choices about cards while the phone is in use: nudges (a card every so often, with an interval per app),
  * the app gate (cards before a chosen app opens), "Pass / Fail only", and when cards must stay away (snooze,
- * quiet hours, driving, Do Not Disturb, calls). The gate's pass and the day's emergency skips are kept here too.
+ * quiet hours, Bluetooth, Do Not Disturb, calls). The gate's pass and the day's emergency skips are kept here too.
  */
 object FocusSettings {
     private const val PREFS = "com.orlikalabs.microreview.focus"
@@ -27,9 +27,6 @@ object FocusSettings {
     private const val KEY_SNOOZE_MINUTES = "snooze_minutes"
     private const val KEY_MORNING = "morning_minute"
     private const val KEY_QUIET_HOURS = "quiet_hours"
-    private const val KEY_PAUSE_DRIVING = "pause_when_driving"
-    private const val KEY_DETECT_VEHICLE = "detect_vehicle"
-    private const val KEY_NOT_DRIVING_UNTIL = "not_driving_until"
     private const val KEY_PAUSE_DND = "pause_on_dnd"
     private const val KEY_PAUSE_CALL = "pause_in_call"
 
@@ -134,20 +131,6 @@ object FocusSettings {
 
     fun setQuietHours(context: Context, windows: List<QuietTime.Window>) =
         prefs(context).edit().putString(KEY_QUIET_HOURS, QuietTime.format(windows)).apply()
-
-    fun pauseWhenDriving(context: Context): Boolean = prefs(context).getBoolean(KEY_PAUSE_DRIVING, true)
-
-    fun setPauseWhenDriving(context: Context, enabled: Boolean) = prefs(context).edit().putBoolean(KEY_PAUSE_DRIVING, enabled).apply()
-
-    /** Also use the phone's motion ("in a vehicle") to tell driving; needs the physical activity permission. */
-    fun detectVehicle(context: Context): Boolean = prefs(context).getBoolean(KEY_DETECT_VEHICLE, false)
-
-    fun setDetectVehicle(context: Context, enabled: Boolean) = prefs(context).edit().putBoolean(KEY_DETECT_VEHICLE, enabled).apply()
-
-    /** "I'm not driving" (a passenger): until then, motion doesn't count as driving. */
-    fun notDrivingUntil(context: Context): Long = prefs(context).getLong(KEY_NOT_DRIVING_UNTIL, 0)
-
-    fun setNotDrivingUntil(context: Context, until: Long) = prefs(context).edit().putLong(KEY_NOT_DRIVING_UNTIL, until).apply()
 
     fun pauseOnDoNotDisturb(context: Context): Boolean = prefs(context).getBoolean(KEY_PAUSE_DND, true)
 

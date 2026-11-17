@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 
 /**
- * The buttons of the monitor's notification ([UsageMonitorService]): snooze, resume, "I'm not driving". Sent to
+ * The buttons of the monitor's notification ([UsageMonitorService]): snooze and resume. Sent to
  * [NotificationReceiver] like the card's buttons.
  */
 object FocusActions {
@@ -13,20 +13,12 @@ object FocusActions {
     const val ACTION_SNOOZE_PREFIX = "ACTION_FOCUS_SNOOZE_"
     const val ACTION_SNOOZE_UNTIL_MORNING = "ACTION_FOCUS_SNOOZE_MORNING"
     const val ACTION_RESUME = "ACTION_FOCUS_RESUME"
-    const val ACTION_NOT_DRIVING = "ACTION_FOCUS_NOT_DRIVING"
-
-    /** How long "I'm not driving" holds. */
-    const val NOT_DRIVING_MS = 60 * 60 * 1000L
 
     /** What [action] does, or null if it isn't one of these buttons. */
     fun task(action: String): ((Context) -> Unit)? = when {
         action == ACTION_SNOOZE_UNTIL_MORNING -> { context -> snoozed(context) { FocusState.snoozeUntilMorning(context) } }
         action == ACTION_RESUME -> { context ->
             FocusState.resume(context)
-            UsageMonitorService.refreshNotification(context)
-        }
-        action == ACTION_NOT_DRIVING -> { context ->
-            FocusSettings.setNotDrivingUntil(context, System.currentTimeMillis() + NOT_DRIVING_MS)
             UsageMonitorService.refreshNotification(context)
         }
         action.startsWith(ACTION_SNOOZE_PREFIX) -> action.removePrefix(ACTION_SNOOZE_PREFIX).toIntOrNull()?.let { minutes ->

@@ -14,7 +14,7 @@ checked on a real build and a real phone.
 | **App gate**: opening a chosen app first asks for 5 cards (setting). Each answer counts. The pass lasts until another app is opened: no grace period. Nothing due: no gate. One emergency skip per day (setting). Back or Leave goes to the home screen. | `GateRules`, `UsageMonitorService.onForegroundChanged`, `FocusReviewActivity` (GATE) |
 | **Snooze**: 30 min / 2 h / until tomorrow on the monitor's notification, "Snooze" on each card, more in the settings. A snooze doesn't open the gate unless chosen. | `FocusActions`, `QuietTime`, `FocusState` |
 | **Quiet hours**: daily windows without cards. | `QuietTime`, `FocusSettings.quietHours` |
-| **Driving**: no cards and an open gate while connected to Android Auto or in car mode; optionally when the phone's motion says "in a vehicle" (Google Play services, physical activity permission), with "I'm not driving" for a passenger. | `DrivingDetector`, `VehicleReceiver` |
+| **Bluetooth pause**: no cards, an open gate and no scheduled reviews while a Bluetooth device is connected (car, headphones). Audio devices need no permission; every device needs "Nearby devices". Replaces the earlier driving detection (Android Auto, car mode, phone motion), removed after a false "driving" at home. | `BluetoothState`, `BluetoothWatcher` |
 | **Also held back** during Do Not Disturb and calls. Scheduled reviews ("at set times") respect all of the above too. | `FocusState.pauseReason`, `Interruptions` |
 | **Settings screen** with a checklist of what still has to be allowed. Bell icon on the main screen. | `FocusSettingsActivity` |
 
@@ -46,15 +46,14 @@ has run yet. Instead:
   Kotlin version (2.3.20) and run: 172 tests pass, including the new `QuietTimeTest`, `NudgeClockTest`,
   `GateRulesTest`, `InterruptionsTest` and the Pass / Fail cases of `AnswerButtonsTest`.
 - **Type check**: every non-Compose source, old and new, compiles against the real `android.jar` (API 36), with
-  hand-written stand-ins for the few AndroidX and Google Play services classes they use. That covers all the new
-  code. The stand-ins are from memory: the Play services calls in `DrivingDetector` are the least certain.
+  hand-written stand-ins for the few AndroidX classes they use. That covers all the new code.
 - **Resources**: every `R.*` reference in every source exists; every XML file parses.
 
 Not checked until CI runs:
 
 - The three small edits in Compose files (`MainScreen.kt`: bell icon and `onOpenFocus`; `ReviewActivity.kt`:
   Pass / Fail labels; `MainActivity.kt`).
-- Dependency resolution (`play-services-location:21.3.0`), the manifest merge, lint (`lintDebug` runs as a separate
+- The manifest merge, lint (`lintDebug` runs as a separate
   job so it can't hold the APK back).
 - The device tests (`androidTest`): they still expect Again / Hard / Good / Easy. Either turn "Pass / Fail only"
   off in their setup or default it to off before proposing anything upstream.
@@ -70,7 +69,7 @@ Not checked until CI runs:
 5. Gate: choose an app, open it: gate within about a second. Answer 5: the app shows. Home, open again: gate again.
    Back: home screen. Emergency skip: once, then the button is gone until tomorrow.
 6. Snooze from the monitor's notification and from a card; Resume.
-7. Driving: connect to Android Auto, or turn the motion setting on and take a ride.
+7. Bluetooth: connect headphones or the car: no cards, gate open; disconnect: back.
 
 Things to watch, with the fallback if they fail:
 
