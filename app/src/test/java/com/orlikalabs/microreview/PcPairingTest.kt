@@ -30,6 +30,11 @@ class PcPairingTest {
     }
 
     @Test
+    fun zeroResumesAtOnce() {
+        assertEquals(1763490000L * 1000, PcPairing.pausedUntil("""{"time":1763490000,"event":"message","message":"0"}"""))
+    }
+
+    @Test
     fun aPauseIsCapped() {
         val line = """{"time":1000,"event":"message","message":"99999"}"""
         assertEquals((1000L + 30 * 60) * 1000, PcPairing.pausedUntil(line))

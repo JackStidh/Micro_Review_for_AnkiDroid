@@ -4,8 +4,9 @@ package com.orlikalabs.microreview
  * Pure part of "pause while my PC is in use": the pairing code shown by Micro Review Desktop (an Anki add-on), the
  * relay topic it gives, and what the PC's messages say. Kept free of Android classes so it can be unit tested.
  *
- * The PC posts to the topic, while it is used, how many seconds the phone should stay paused from the moment the
- * relay received the message ("300"). The phone reads the topic's recent messages ([PcActivity]).
+ * The PC posts to the topic how many seconds the phone should stay paused from the moment the relay received the
+ * message ("420" while it is used, the remainder when its use stops, "0" to resume). The phone reads the topic's
+ * recent messages and follows the latest ([PcActivity]).
  */
 object PcPairing {
     /** Codes are 16 letters and digits, shown as four groups ("k3p9-x2mq-7rtv-w8de"). */

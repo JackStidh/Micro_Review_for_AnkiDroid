@@ -1,0 +1,32 @@
+{
+    "interval_minutes": 20,
+    "cards_per_prompt": 5,
+    "decks": [],
+    "pass_fail_only": true,
+    "show_intervals": true,
+    "play_audio": false,
+    "skips_per_day": 1,
+    "require_internet": true,
+    "idle_after_seconds": 120,
+    "pause_phone_while_in_use": true,
+    "phone_pause_minutes": 5,
+    "gaming_shutoff": true,
+    "game_processes": [
+        "Minecraft.Windows.exe",
+        "javaw.exe:Minecraft"
+    ],
+    "fullscreen_counts_as_game": true,
+    "browsers": [
+        "chrome.exe",
+        "msedge.exe",
+        "firefox.exe",
+        "opera.exe",
+        "brave.exe",
+        "vivaldi.exe"
+    ],
+    "start_with_windows": true,
+    "start_hidden": true,
+    "keep_running_when_closed": true,
+    "sync_after_cards": true,
+    "morning_hour": 7
+}

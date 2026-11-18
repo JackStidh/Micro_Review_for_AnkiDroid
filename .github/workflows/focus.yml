@@ -1,7 +1,7 @@
 name: Focus build
 
-# Builds the "focus" branch and publishes the debug APK as the "focus-latest" pre-release, so it can be
-# downloaded and installed from a phone (Releases page of the repository).
+# Builds the "focus" branch and publishes the debug APK and the desktop Anki add-on (.ankiaddon) as the
+# "focus-latest" pre-release, so they can be downloaded and installed (Releases page of the repository).
 on:
   push:
     branches: [ "focus" ]
@@ -32,6 +32,16 @@ jobs:
     - name: Build the debug APK
       run: ./gradlew assembleDebug
 
+    - name: Desktop add-on tests
+      run: |
+        python3 -m pip install --quiet pytest
+        python3 -m pytest -q desktop/tests
+
+    - name: Build the desktop add-on
+      run: |
+        cd desktop/micro_review_desktop
+        zip -r -q ../../micro-review-desktop.ankiaddon . -x "__pycache__/*" "*/__pycache__/*" "user_files/*"
+
     - name: Upload the APK
       uses: actions/upload-artifact@v4
       with:
@@ -44,11 +54,11 @@ jobs:
       run: |
         cp app/build/outputs/apk/debug/app-debug.apk micro-review-focus.apk
         gh release delete focus-latest --cleanup-tag --yes || true
-        gh release create focus-latest micro-review-focus.apk \
+        gh release create focus-latest micro-review-focus.apk micro-review-desktop.ankiaddon \
           --prerelease \
           --target "${{ github.sha }}" \
           --title "Micro Review Focus (latest build)" \
-          --notes "Debug build of the focus branch at ${{ github.sha }}. Install the APK over the previous one; AnkiDroid must be installed with its API enabled."
+          --notes "Build of the focus branch at ${{ github.sha }}. Phone: install the APK over the previous one (AnkiDroid must be installed with its API enabled). PC: double-click the .ankiaddon with Anki installed, or Anki › Tools › Add-ons › Install from file."
 
   # Lint apart, so that a lint finding doesn't hold the APK back.
   lint:

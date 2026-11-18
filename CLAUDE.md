@@ -15,7 +15,8 @@ Micro Review for AnkiDroid is a small Android app that lets the user review Anki
 - Branch `focus`: nudges while the phone is in use, the app gate, Pass / Fail, snooze and Bluetooth pause. Its files
   (`Focus*.kt`, `Nudge*.kt`, `CardOverlay.kt`, `GateRules.kt`, `QuietTime.kt`, `Interruptions.kt`, `BluetoothState.kt`,
   `NoteFields*.kt`, `UsageMonitorService.kt`), how they hook into the existing ones and what is still unverified are described in
-  `docs/focus/NOTES.md`. Read it before working on that branch.
+  `docs/focus/NOTES.md`. Read it before working on that branch. The desktop Anki add-on (Python, Anki 2.1.49+, Python 3.9 syntax)
+  is in `desktop/`, described in `desktop/README.md`.
 
 ## Build & run
 

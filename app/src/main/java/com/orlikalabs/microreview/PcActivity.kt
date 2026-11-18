@@ -9,7 +9,8 @@ import java.net.URL
  * PC is used (mouse or keyboard), and the phone pauses for 5 minutes after the PC's last use ([PcPairing]).
  *
  * The relay is ntfy.sh, a free public publish/subscribe service: the PC and the phone share a topic named after
- * the pairing code, and the messages only carry a number of seconds. The phone reads it just before it would show
+ * the pairing code, and the messages only carry a number of seconds; the latest one counts (the PC says when its
+ * use starts, every few minutes while it lasts, and when it stops). The phone reads it just before it would show
  * a card or a gate ([refresh], from the monitor's thread); [isInUse] only answers from the last read.
  */
 object PcActivity {
@@ -51,11 +52,12 @@ object PcActivity {
                 readTimeout = TIMEOUT_MS
                 setRequestProperty("User-Agent", "MicroReview")
             }
+            // In the order the relay received them: the latest message counts.
             var until = 0L
             connection.inputStream.bufferedReader().useLines { lines ->
-                lines.forEach { until = maxOf(until, PcPairing.pausedUntil(it)) }
+                lines.forEach { line -> PcPairing.pausedUntil(line).takeIf { it != 0L }?.let { until = it } }
             }
-            if (until > pausedUntil || until == 0L) pausedUntil = until
+            pausedUntil = until
             lastError = null
         } catch (e: Exception) {
             lastError = e.toString()

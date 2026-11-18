@@ -44,3 +44,7 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Micro Review Desktop (Anki add-on): Python caches and the state Anki keeps next to it
+__pycache__/
+desktop/micro_review_desktop/user_files/

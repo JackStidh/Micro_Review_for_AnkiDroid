@@ -16,6 +16,10 @@ checked on a real build and a real phone.
 | **Quiet hours**: daily windows without cards. | `QuietTime`, `FocusSettings.quietHours` |
 | **Bluetooth pause**: no cards, an open gate and no scheduled reviews while a Bluetooth device is connected (car, headphones). Audio devices need no permission; every device needs "Nearby devices". Replaces the earlier driving detection (Android Auto, car mode, phone motion), removed after a false "driving" at home. | `BluetoothState`, `BluetoothWatcher` |
 | **Also held back** during Do Not Disturb and calls. Scheduled reviews ("at set times") respect all of the above too. | `FocusState.pauseReason`, `Interruptions` |
+| **1-second lock**: a card's buttons don't work for a second after it appears (dimmed), so a tap meant for the keyboard doesn't answer it. Not on the pop-up notification style (its buttons can't be delayed). | `FocusCardController.lockedUntil` |
+| **Bury** (until tomorrow, AnkiDroid's `buried` column of `ReviewInfo`); not an answer, doesn't count for the gate. | `CardReview.bury`, `AnkiDataSource.buryCard` |
+| **Next intervals** on Pass and Fail ("Pass · 4d"), from AnkiDroid's `next_review_times`, now kept with the stored card. | `AnswerButtons.nextReviewText`, `StoredState.nextReviewTimes` |
+| **Pause while the PC is in use**: paired with Micro Review Desktop (`desktop/`), cards and the gate pause until 5 minutes after the PC's last input, read from an ntfy.sh topic just before a card or a gate. | `PcActivity`, `PcPairing` |
 | **Settings screen** with a checklist of what still has to be allowed. Bell icon on the main screen. | `FocusSettingsActivity` |
 
 ## How it fits the existing app
