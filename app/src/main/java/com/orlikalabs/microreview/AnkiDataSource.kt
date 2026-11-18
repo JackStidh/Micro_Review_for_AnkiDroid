@@ -46,6 +46,9 @@ interface AnkiDataSource {
     /** Records an answer. [ease] is 1 to the card's button count. */
     fun reviewCard(noteId: Long, cardOrd: Int, ease: Int, timeTakenMs: Long)
 
+    /** Buries the card: it isn't due again before tomorrow. Not an answer: nothing is recorded in its history. */
+    fun buryCard(noteId: Long, cardOrd: Int)
+
     /** The deck selected in AnkiDroid (the one its study screen shows), or null if it can't be read. */
     fun selectedDeck(): Long?
 
@@ -152,6 +155,15 @@ class ContentProviderAnkiData(private val context: Context) : AnkiDataSource {
             put(AnkiDroidContract.ReviewInfo.CARD_ORD, cardOrd)
             put(AnkiDroidContract.ReviewInfo.EASE, ease)
             put(AnkiDroidContract.ReviewInfo.TIME_TAKEN, timeTakenMs)
+        }
+        context.contentResolver.update(AnkiDroidContract.ReviewInfo.CONTENT_URI, values, null, null)
+    }
+
+    override fun buryCard(noteId: Long, cardOrd: Int) {
+        val values = ContentValues().apply {
+            put(AnkiDroidContract.ReviewInfo.NOTE_ID, noteId)
+            put(AnkiDroidContract.ReviewInfo.CARD_ORD, cardOrd)
+            put(AnkiDroidContract.ReviewInfo.BURY, 1)
         }
         context.contentResolver.update(AnkiDroidContract.ReviewInfo.CONTENT_URI, values, null, null)
     }

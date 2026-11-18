@@ -67,6 +67,7 @@ public class AnkiDroidHelper {
         message.put("answer", card.a);
         message.put("button_count", card.buttonCount);
         message.put("deck_name", card.deckName);
+        if (card.nextReviewTexts != null) message.put("next_review_times", card.nextReviewTexts.toString());
         JSONObject js = new JSONObject(message);
 
         cardsDb.edit().putString(KEY_CURRENT_STATE, js.toString()).apply();
@@ -96,6 +97,7 @@ public class AnkiDroidHelper {
             state.answer = json.optString("answer", "");
             state.buttonCount = json.optInt("button_count", 4);
             state.deckName = json.optString("deck_name", "");
+            state.nextReviewTimes = json.optString("next_review_times", "");
             return state;
         } catch (JSONException e) {
             Log.e("AnkiDroidHelper", "Could not read the stored state", e);
@@ -241,6 +243,11 @@ public class AnkiDroidHelper {
         // Right before the answer: the due-card queries (isCardDue()) can build the study queue again.
         dropStudyQueue();
         mSource.reviewCard(noteID, cardOrd, ease, timeTakenMs);
+    }
+
+    /** Buries the card until tomorrow (AnkiDroid buries any card, not only the top of its study queue). */
+    public void buryCard(long noteID, int cardOrd) {
+        mSource.buryCard(noteID, cardOrd);
     }
 
     /**

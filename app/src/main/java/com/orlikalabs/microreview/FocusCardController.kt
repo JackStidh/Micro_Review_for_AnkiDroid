@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.StyleSpan
@@ -24,6 +25,8 @@ import java.util.concurrent.Executors
  *
  * The card is on screen from the moment it is shown to its answer, so the time recorded with the answer is exact;
  * a card left unanswered doesn't count any. Under the answer, the note's fields the card didn't show ([NoteFields]).
+ * Its buttons wait a second before they work ([APPEAR_LOCK_MS]): a card that pops up while the user is typing
+ * mustn't take the next tap. "Bury" puts the card away until tomorrow; it doesn't count as an answer.
  *
  * Used on the main thread; AnkiDroid is queried on its own thread.
  */
@@ -61,9 +64,13 @@ class FocusCardController(private val context: Context, root: View, private val 
     private var continueTimer = false
     private var stopped = false
 
+    /** Until then (uptime), the buttons don't work. */
+    private var lockedUntil = 0L
+
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
     private val autoClose = Runnable { if (choosing && !stopped) host.close() }
+    private val unlock = Runnable { if (!stopped) render() }
 
     private val scroll: ScrollView = root.findViewById(R.id.focusScroll)
     private val title: TextView = root.findViewById(R.id.focusTitle)
@@ -78,6 +85,13 @@ class FocusCardController(private val context: Context, root: View, private val 
     private val snoozeRow: View = root.findViewById(R.id.focusSnoozeRow)
     private val secondary1: Button = root.findViewById(R.id.focusSecondary1)
     private val secondary2: Button = root.findViewById(R.id.focusSecondary2)
+    private val bury: Button = root.findViewById(R.id.focusBury)
+    private val snoozeButtons: List<Button> = listOf(
+        root.findViewById(R.id.focusSnooze1),
+        root.findViewById(R.id.focusSnooze2),
+        root.findViewById(R.id.focusSnooze3),
+        root.findViewById(R.id.focusSnooze4),
+    )
     private val buttons = linkedMapOf<Int, Button>(
         AnswerButtons.AGAIN to root.findViewById(R.id.focusButton1),
         AnswerButtons.HARD to root.findViewById(R.id.focusButton2),
@@ -86,12 +100,13 @@ class FocusCardController(private val context: Context, root: View, private val 
     )
 
     init {
-        buttons.forEach { (button, view) -> view.setOnClickListener { answer(button) } }
-        showAnswer.setOnClickListener { reveal() }
-        root.findViewById<Button>(R.id.focusSnooze1).setOnClickListener { snooze { FocusState.snooze(context, 15) } }
-        root.findViewById<Button>(R.id.focusSnooze2).setOnClickListener { snooze { FocusState.snooze(context, 60) } }
-        root.findViewById<Button>(R.id.focusSnooze3).setOnClickListener { snooze { FocusState.snooze(context, 180) } }
-        root.findViewById<Button>(R.id.focusSnooze4).setOnClickListener { snooze { FocusState.snoozeUntilMorning(context) } }
+        buttons.forEach { (button, view) -> view.setOnClickListener { if (!isLocked()) answer(button) } }
+        showAnswer.setOnClickListener { if (!isLocked()) reveal() }
+        bury.setOnClickListener { if (!isLocked()) bury() }
+        snoozeButtons[0].setOnClickListener { snooze { FocusState.snooze(context, 15) } }
+        snoozeButtons[1].setOnClickListener { snooze { FocusState.snooze(context, 60) } }
+        snoozeButtons[2].setOnClickListener { snooze { FocusState.snooze(context, 180) } }
+        snoozeButtons[3].setOnClickListener { snooze { FocusState.snoozeUntilMorning(context) } }
     }
 
     fun start(mode: Mode, app: String?, continueTimer: Boolean = false) {
@@ -105,6 +120,9 @@ class FocusCardController(private val context: Context, root: View, private val 
         revealed = false
         this.continueTimer = continueTimer
         main.removeCallbacks(autoClose)
+        lockedUntil = SystemClock.uptimeMillis() + APPEAR_LOCK_MS
+        main.removeCallbacks(unlock)
+        main.postAtTime(unlock, lockedUntil)
         load(sync = true)
     }
 
@@ -113,6 +131,7 @@ class FocusCardController(private val context: Context, root: View, private val 
         if (stopped) return
         stopped = true
         main.removeCallbacks(autoClose)
+        main.removeCallbacks(unlock)
         val app = context.applicationContext
         io.execute { ReviewTimer.clear(app) }
         io.shutdown()
@@ -232,7 +251,34 @@ class FocusCardController(private val context: Context, root: View, private val 
         host.close()
     }
 
+    private fun isLocked(): Boolean = SystemClock.uptimeMillis() < lockedUntil
+
+    /** Bury: the card goes away until tomorrow and the next one shows. Doesn't count toward the gate's cards. */
+    private fun bury() {
+        val current = card ?: return
+        if (busy) return
+        busy = true
+        render()
+        val app = context.applicationContext
+        io.execute {
+            val buried = try {
+                CardReview.bury(app, CardSync.CardKey(current.noteID, current.cardOrd))
+            } catch (e: Exception) {
+                FocusLog.i(app, "bury failed: $e")
+                false
+            }
+            main.post {
+                if (stopped) return@post
+                busy = false
+                if (buried) FocusLog.i(app, "card buried")
+                // The next card was stored by the bury.
+                load(sync = !buried)
+            }
+        }
+    }
+
     private fun snooze(start: () -> Unit) {
+        if (isLocked()) return
         start()
         FocusLog.i(context, "snoozed from the card")
         UsageMonitorService.refreshNotification(context)
@@ -266,17 +312,30 @@ class FocusCardController(private val context: Context, root: View, private val 
             busy -> ""
             else -> context.getString(R.string.all_cards_done)
         }
+        val usable = !busy && !isLocked()
         showAnswer.visibility = if (showCard && !revealed) View.VISIBLE else View.GONE
-        showAnswer.isEnabled = !busy
+        enable(showAnswer, usable)
         answerButtons.visibility = if (showBack) View.VISIBLE else View.GONE
         val shown = if (current != null) AnswerButtons.shownButtons(current.buttonCount, passFail) else emptyList()
+        val times = current?.nextReviewTexts?.let { array -> List(array.length()) { array.optString(it) } }
         buttons.forEach { (button, view) ->
             view.visibility = if (button in shown) View.VISIBLE else View.GONE
-            view.isEnabled = !busy
-            view.setText(AnswerLabels.label(button, passFail))
+            enable(view, usable)
+            val label = context.getString(AnswerLabels.label(button, passFail))
+            val next = current?.let { AnswerButtons.nextReviewText(times, button, it.buttonCount) }
+            view.text = if (next == null) label else context.getString(R.string.answer_with_interval, label, next)
         }
+        bury.visibility = if (showCard) View.VISIBLE else View.GONE
+        enable(bury, usable)
         snoozeRow.visibility = if (snoozeOpen && showCard) View.VISIBLE else View.GONE
+        snoozeButtons.forEach { enable(it, usable) }
         renderSecondary(showCard)
+    }
+
+    /** Enabled, or dimmed while it can't be used. */
+    private fun enable(view: View, enabled: Boolean) {
+        view.isEnabled = enabled
+        view.alpha = if (enabled) 1f else DISABLED_ALPHA
     }
 
     /** "Name: value" lines, the names in bold. */
@@ -330,13 +389,17 @@ class FocusCardController(private val context: Context, root: View, private val 
     private fun show(button: Button, text: String, onClick: () -> Unit) {
         button.text = text
         button.visibility = View.VISIBLE
-        button.isEnabled = !busy
-        button.setOnClickListener { onClick() }
+        enable(button, !busy && !isLocked())
+        button.setOnClickListener { if (!isLocked()) onClick() }
     }
 
     companion object {
         /** After a nudge's answer, "Keep going" stays this long. */
         private const val AUTO_CLOSE_MS = 8_000L
+
+        /** A card's buttons wait this long after it appears. */
+        private const val APPEAR_LOCK_MS = 1_000L
+        private const val DISABLED_ALPHA = 0.4f
 
         /** The name of [packageName] as the launcher shows it. */
         fun appLabel(context: Context, packageName: String?): String {

@@ -19,6 +19,8 @@
     <!-- "While a Bluetooth device is connected" (BluetoothState): audio devices need nothing; every device needs
          "Nearby devices" (Android 12+), asked when the setting is turned on, or the old permission before. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- "Pause while my PC is in use" (PcActivity): reads the PC's messages from the relay. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
 
     <queries>

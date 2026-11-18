@@ -9,6 +9,9 @@ public class StoredState {
     int buttonCount = 4;
     String deckName = "";
 
+    /** When the card comes back after each answer, as AnkiDroid words it ("<10m", "4d"): a JSON array, or empty. */
+    String nextReviewTimes = "";
+
     /** False for the "empty" state stored when there is no card to review. */
     boolean hasCard() {
         return !(noteID == -1 && cardOrd == -1);
@@ -24,6 +27,13 @@ public class StoredState {
         card.q = question;
         card.a = answer;
         card.buttonCount = buttonCount;
+        if (nextReviewTimes != null && !nextReviewTimes.isEmpty()) {
+            try {
+                card.nextReviewTexts = new org.json.JSONArray(nextReviewTimes);
+            } catch (org.json.JSONException e) {
+                card.nextReviewTexts = null;
+            }
+        }
         return card;
     }
 }

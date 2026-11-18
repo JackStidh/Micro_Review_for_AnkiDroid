@@ -1,0 +1,73 @@
+package com.orlikalabs.microreview
+
+import android.content.Context
+import java.net.HttpURLConnection
+import java.net.URL
+
+/**
+ * "Pause while my PC is in use": Micro Review Desktop, an Anki add-on on the user's PC, posts to a relay while the
+ * PC is used (mouse or keyboard), and the phone pauses for 5 minutes after the PC's last use ([PcPairing]).
+ *
+ * The relay is ntfy.sh, a free public publish/subscribe service: the PC and the phone share a topic named after
+ * the pairing code, and the messages only carry a number of seconds. The phone reads it just before it would show
+ * a card or a gate ([refresh], from the monitor's thread); [isInUse] only answers from the last read.
+ */
+object PcActivity {
+    const val RELAY = "https://ntfy.sh"
+    private const val TIMEOUT_MS = 4_000
+
+    /** Only the messages of the last few minutes can still pause. */
+    private const val SINCE = "15m"
+
+    @Volatile
+    private var checkedAt = 0L
+
+    @Volatile
+    var pausedUntil = 0L
+        private set
+
+    /** Why the last read failed, for the diagnostics; null if it worked. */
+    @Volatile
+    var lastError: String? = null
+        private set
+
+    /** Whether the PC said it is in use, as last read. No network. */
+    fun isInUse(context: Context, now: Long = System.currentTimeMillis()): Boolean =
+        FocusSettings.pauseWhenPcInUse(context) && FocusSettings.pcPairingCode(context) != null && now < pausedUntil
+
+    /**
+     * Reads the relay again if the last read is older than [maxAgeMs]. Network I/O: off the main thread. A failed
+     * read keeps what was known: the phone isn't paused by an unreachable relay, nor unpaused by one.
+     */
+    fun refresh(context: Context, maxAgeMs: Long, now: Long = System.currentTimeMillis()) {
+        if (!FocusSettings.pauseWhenPcInUse(context)) return
+        val code = FocusSettings.pcPairingCode(context) ?: return
+        if (now - checkedAt in 0 until maxAgeMs) return
+        checkedAt = now
+        var connection: HttpURLConnection? = null
+        try {
+            connection = (URL("$RELAY/${PcPairing.topic(code)}/json?poll=1&since=$SINCE").openConnection() as HttpURLConnection).apply {
+                connectTimeout = TIMEOUT_MS
+                readTimeout = TIMEOUT_MS
+                setRequestProperty("User-Agent", "MicroReview")
+            }
+            var until = 0L
+            connection.inputStream.bufferedReader().useLines { lines ->
+                lines.forEach { until = maxOf(until, PcPairing.pausedUntil(it)) }
+            }
+            if (until > pausedUntil || until == 0L) pausedUntil = until
+            lastError = null
+        } catch (e: Exception) {
+            lastError = e.toString()
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
+    /** A new pairing: what was read for the old one doesn't count. */
+    fun forget() {
+        checkedAt = 0L
+        pausedUntil = 0L
+        lastError = null
+    }
+}

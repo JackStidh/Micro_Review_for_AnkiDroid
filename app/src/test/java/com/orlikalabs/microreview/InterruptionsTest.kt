@@ -12,7 +12,8 @@ class InterruptionsTest {
         doNotDisturb: Boolean = false,
         inCall: Boolean = false,
         bluetooth: Boolean = false,
-    ) = Interruptions.reason(snoozed, quietHours, doNotDisturb, inCall, bluetooth)
+        pcInUse: Boolean = false,
+    ) = Interruptions.reason(snoozed, quietHours, doNotDisturb, inCall, bluetooth, pcInUse)
 
     @Test
     fun nothingInTheWay() {
@@ -26,6 +27,13 @@ class InterruptionsTest {
         assertEquals(Reason.DO_NOT_DISTURB, reason(doNotDisturb = true))
         assertEquals(Reason.IN_CALL, reason(inCall = true))
         assertEquals(Reason.BLUETOOTH, reason(bluetooth = true))
+        assertEquals(Reason.PC_IN_USE, reason(pcInUse = true))
+    }
+
+    @Test
+    fun thePcComesAfterBluetooth() {
+        assertEquals(Reason.BLUETOOTH, reason(bluetooth = true, pcInUse = true))
+        assertEquals(Reason.PC_IN_USE, reason(pcInUse = true, quietHours = true, inCall = true))
     }
 
     @Test

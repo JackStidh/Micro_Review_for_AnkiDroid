@@ -212,6 +212,7 @@ class UsageMonitorService : Service() {
         val due = clock.tick(app, elapsed, perApp, defaultMinutes)
         MonitorStatus.nextCardMs = clock.remainingMs(app, perApp, defaultMinutes)
         if (!due || NudgeSession.isBusy(this)) return
+        PcActivity.refresh(this, PC_FRESH_FOR_CARD_MS)
         // Not now: the card stays due and comes as soon as nothing is in the way.
         val pause = FocusState.pauseReason(this)
         if (pause != null) {
@@ -256,6 +257,8 @@ class UsageMonitorService : Service() {
         val gated = FocusSettings.gatedApps(this)
         // Most apps aren't gated: no need to look for a due card.
         if (app !in gated || app == pass) return
+        // The PC's last word, fresh: it may have been used a moment ago.
+        PcActivity.refresh(this, PC_FRESH_FOR_GATE_MS)
         if (FocusState.gatePaused(this)) {
             FocusLog.i(this, "gate open for $app: paused (${FocusState.pauseReason(this)?.name?.lowercase() ?: "snoozed"})")
             return
@@ -323,6 +326,10 @@ class UsageMonitorService : Service() {
         private const val FIRST_LOOKBACK_MS = 30 * 60_000L
         private const val DUE_CHECK_INTERVAL_MS = 5 * 60_000L
 
+        /** How old the PC's state may be when a gated app opens, and while a card waits ([PcActivity]). */
+        private const val PC_FRESH_FOR_GATE_MS = 20_000L
+        private const val PC_FRESH_FOR_CARD_MS = 60_000L
+
         /** When to look at the app in front again (elapsed realtime), 0 for not. */
         @Volatile
         private var recheckAt = 0L
@@ -380,6 +387,7 @@ class UsageMonitorService : Service() {
                 Interruptions.Reason.SNOOZED -> context.getString(R.string.monitor_snoozed_until, formatTime(context, FocusSettings.snoozeUntil(context)))
                 Interruptions.Reason.QUIET_HOURS -> context.getString(R.string.monitor_quiet_hours)
                 Interruptions.Reason.BLUETOOTH -> context.getString(R.string.monitor_bluetooth)
+                Interruptions.Reason.PC_IN_USE -> context.getString(R.string.monitor_pc_in_use)
                 Interruptions.Reason.DO_NOT_DISTURB -> context.getString(R.string.monitor_do_not_disturb)
                 Interruptions.Reason.IN_CALL -> context.getString(R.string.monitor_in_call)
                 null -> {
@@ -414,7 +422,7 @@ class UsageMonitorService : Service() {
             when (pauseReason) {
                 Interruptions.Reason.SNOOZED ->
                     builder.addAction(0, context.getString(R.string.monitor_resume), FocusActions.intent(context, FocusActions.ACTION_RESUME))
-                Interruptions.Reason.BLUETOOTH -> Unit
+                Interruptions.Reason.BLUETOOTH, Interruptions.Reason.PC_IN_USE -> Unit
                 else -> {
                     builder.addAction(0, context.getString(R.string.snooze_30_minutes), FocusActions.intent(context, FocusActions.ACTION_SNOOZE_PREFIX + 30))
                     builder.addAction(0, context.getString(R.string.snooze_2_hours), FocusActions.intent(context, FocusActions.ACTION_SNOOZE_PREFIX + 120))

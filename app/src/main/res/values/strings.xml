@@ -210,8 +210,12 @@
     <string name="snooze_2_hours">2 hours</string>
     <string name="snooze_until_tomorrow">Until tomorrow</string>
     <string name="snooze">Snooze</string>
+    <string name="bury">Bury</string>
+    <!-- An answer button with when the card comes back: "Pass · 4d". -->
+    <string name="answer_with_interval">%1$s · %2$s</string>
     <string name="snooze_15_minutes">15 min</string>
     <string name="snooze_3_hours">3 hours</string>
+    <string name="monitor_pc_in_use">Your PC is in use: everything is paused.</string>
     <string name="monitor_bluetooth">Bluetooth device connected: everything is paused.</string>
     <string name="monitor_next_card">Next card in %1$d min of use.</string>
 
@@ -296,6 +300,16 @@
     <string name="focus_quiet_from">Quiet from</string>
     <string name="focus_quiet_to">Until</string>
     <string name="focus_open">Cards while you use your phone</string>
+    <string name="focus_pc">Your PC</string>
+    <string name="focus_pc_pair">Pause while my PC is in use</string>
+    <string name="focus_pc_pair_detail">With Micro Review Desktop, the Anki add-on, on your PC: cards and the gate pause for 5 minutes after you last use its mouse or keyboard.</string>
+    <string name="focus_pc_enter_code">Enter code</string>
+    <string name="focus_pc_enter_code_detail">In Anki on your PC: Tools › Micro Review Desktop. Type the pairing code shown there.</string>
+    <string name="focus_pc_bad_code">16 letters and digits, like k3p9-x2mq-7rtv-w8de</string>
+    <string name="focus_pc_pause">Pause while my PC is in use</string>
+    <string name="focus_pc_pause_detail">No cards, the gate is open, for 5 minutes after you last use your PC\'s mouse or keyboard. Your PC tells the phone through ntfy.sh, a free relay: only a number of seconds is sent.</string>
+    <string name="focus_pc_paired">Paired with your PC</string>
+    <string name="focus_pc_unpair">Unpair</string>
     <string name="focus_diagnostics">Diagnostics</string>
     <string name="focus_diagnostics_copy">Copy</string>
     <string name="focus_diagnostics_copied">Copied: paste it where you report the problem.</string>

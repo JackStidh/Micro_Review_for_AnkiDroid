@@ -22,6 +22,8 @@ object FocusSettings {
     private const val KEY_PASS_FAIL = "pass_fail_only"
     private const val KEY_NOTE_FIELDS = "show_note_fields"
     private const val KEY_PAUSE_BLUETOOTH = "pause_on_bluetooth"
+    private const val KEY_PC_CODE = "pc_pairing_code"
+    private const val KEY_PAUSE_PC = "pause_when_pc_in_use"
 
     private const val KEY_SNOOZE_UNTIL = "snooze_until"
     private const val KEY_SNOOZE_MINUTES = "snooze_minutes"
@@ -140,6 +142,16 @@ object FocusSettings {
     fun pauseOnBluetooth(context: Context): Boolean = prefs(context).getBoolean(KEY_PAUSE_BLUETOOTH, true)
 
     fun setPauseOnBluetooth(context: Context, enabled: Boolean) = prefs(context).edit().putBoolean(KEY_PAUSE_BLUETOOTH, enabled).apply()
+
+    /** The pairing code of Micro Review Desktop ([PcPairing.normalize]d), or null if not paired. */
+    fun pcPairingCode(context: Context): String? = prefs(context).getString(KEY_PC_CODE, null)?.let(PcPairing::normalize)
+
+    fun setPcPairingCode(context: Context, code: String?) = prefs(context).edit().putString(KEY_PC_CODE, code).apply()
+
+    /** Everything paused for 5 minutes after the paired PC's last use ([PcActivity]). */
+    fun pauseWhenPcInUse(context: Context): Boolean = prefs(context).getBoolean(KEY_PAUSE_PC, true)
+
+    fun setPauseWhenPcInUse(context: Context, enabled: Boolean) = prefs(context).edit().putBoolean(KEY_PAUSE_PC, enabled).apply()
 
     fun pauseInCall(context: Context): Boolean = prefs(context).getBoolean(KEY_PAUSE_CALL, true)
 

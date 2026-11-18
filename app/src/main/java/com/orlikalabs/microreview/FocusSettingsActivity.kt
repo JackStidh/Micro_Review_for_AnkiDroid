@@ -18,6 +18,7 @@ import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Switch
@@ -83,6 +84,7 @@ class FocusSettingsActivity : Activity() {
         answerSection()
         gateSection()
         pauseSection()
+        pcSection()
         diagnosticsSection()
     }
 
@@ -347,6 +349,56 @@ class FocusSettingsActivity : Activity() {
         }
     }
 
+    // The PC
+
+    /** Pairing with Micro Review Desktop, the Anki add-on: the phone pauses while the PC is in use ([PcActivity]). */
+    private fun pcSection() {
+        header(getString(R.string.focus_pc))
+        val code = FocusSettings.pcPairingCode(this)
+        if (code == null) {
+            action(getString(R.string.focus_pc_pair), getString(R.string.focus_pc_pair_detail), getString(R.string.focus_pc_enter_code)) {
+                enterPairingCode()
+            }
+            return
+        }
+        toggle(getString(R.string.focus_pc_pause), getString(R.string.focus_pc_pause_detail), FocusSettings.pauseWhenPcInUse(this)) {
+            FocusSettings.setPauseWhenPcInUse(this, it)
+        }
+        action(getString(R.string.focus_pc_paired), PcPairing.display(code), getString(R.string.focus_pc_unpair)) {
+            FocusSettings.setPcPairingCode(this, null)
+            PcActivity.forget()
+            changed()
+        }
+    }
+
+    private fun enterPairingCode() {
+        val input = EditText(this).apply {
+            hint = "xxxx-xxxx-xxxx-xxxx"
+            isSingleLine = true
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.focus_pc_enter_code)
+            .setMessage(R.string.focus_pc_enter_code_detail)
+            .setView(input)
+            .setPositiveButton(android.R.string.ok, null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val code = PcPairing.normalize(input.text.toString())
+                if (code == null) {
+                    input.error = getString(R.string.focus_pc_bad_code)
+                } else {
+                    FocusSettings.setPcPairingCode(this, code)
+                    PcActivity.forget()
+                    dialog.dismiss()
+                    changed()
+                }
+            }
+        }
+        dialog.show()
+    }
+
     private fun askBluetoothPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !BluetoothState.hasPermission(this)) {
             requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT), REQUEST_BLUETOOTH)
@@ -387,6 +439,11 @@ class FocusSettingsActivity : Activity() {
             "Next card: $next",
             "Paused: ${status.pauseReason?.name?.lowercase() ?: "no"}",
             "Bluetooth connected: ${yes(BluetoothState.isConnected(this))} (nearby devices allowed: ${yes(BluetoothState.hasPermission(this))})",
+            "PC: " + (FocusSettings.pcPairingCode(this)?.let {
+                val until = PcActivity.pausedUntil
+                val inUse = if (until > System.currentTimeMillis()) "in use until ${UsageMonitorService.formatTime(this, until)}" else "not in use"
+                "paired, $inUse" + (PcActivity.lastError?.let { error -> ", last read failed: $error" } ?: "")
+            } ?: "not paired"),
             "Card style: ${FocusSettings.nudgeStyle(this).name.lowercase()}, default every ${FocusSettings.defaultIntervalMinutes(this)} min, per app: ${FocusSettings.appIntervals(this)}",
             "Gated: ${FocusSettings.gatedApps(this)}, pass: ${FocusSettings.gatePass(this) ?: "none"}",
             "",

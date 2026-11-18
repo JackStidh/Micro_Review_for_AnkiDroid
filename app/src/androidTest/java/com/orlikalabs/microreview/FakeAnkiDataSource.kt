@@ -98,6 +98,10 @@ class FakeAnkiDataSource : AnkiDataSource {
         dueCards.values.forEach { cards -> cards.removeAll { it.noteId == noteId && it.ord == cardOrd } }
     }
 
+    override fun buryCard(noteId: Long, cardOrd: Int) = synchronized(this) {
+        dueCards.values.forEach { cards -> cards.removeAll { it.noteId == noteId && it.ord == cardOrd } }
+    }
+
     override fun selectedDeck(): Long = synchronized(this) { selected }
 
     override fun selectDeck(deckId: Long): Boolean = synchronized(this) {

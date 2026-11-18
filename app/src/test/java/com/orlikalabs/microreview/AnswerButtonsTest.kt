@@ -53,4 +53,17 @@ class AnswerButtonsTest {
         assertEquals(2, AnswerButtons.easeFor(GOOD, 2))
         assertEquals(1, AnswerButtons.easeFor(AGAIN, 4))
     }
+
+    @Test
+    fun nextReviewTextFollowsTheEase() {
+        val four = listOf("<1m", "<6m", "<10m", "4d")
+        assertEquals("<10m", AnswerButtons.nextReviewText(four, GOOD, 4))
+        assertEquals("<1m", AnswerButtons.nextReviewText(four, AGAIN, 4))
+        // Three buttons: Good is the second ease.
+        assertEquals("1d", AnswerButtons.nextReviewText(listOf("<1m", "1d", "4d"), GOOD, 3))
+        assertEquals("4d", AnswerButtons.nextReviewText(listOf("<\u20681\u2069m", "\u20684\u2069d"), GOOD, 2))
+        assertEquals(null, AnswerButtons.nextReviewText(null, GOOD, 4))
+        assertEquals(null, AnswerButtons.nextReviewText(listOf("<1m"), GOOD, 4))
+        assertEquals(null, AnswerButtons.nextReviewText(listOf("", " ", "", ""), GOOD, 4))
+    }
 }

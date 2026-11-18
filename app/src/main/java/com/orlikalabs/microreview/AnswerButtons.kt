@@ -29,6 +29,19 @@ object AnswerButtons {
     fun shownButtons(buttonCount: Int, passFailOnly: Boolean): List<Int> =
         if (passFailOnly) listOf(AGAIN, GOOD) else visibleButtons(buttonCount)
 
+    /**
+     * When the card comes back if answered with [button], from AnkiDroid's next review times (one per ease, in
+     * order), cleaned of its direction marks: "4d", "<10m". Null if unknown.
+     */
+    @JvmStatic
+    fun nextReviewText(times: List<String>?, button: Int, buttonCount: Int): String? {
+        val ease = easeFor(button, buttonCount) ?: return null
+        return times?.getOrNull(ease - 1)?.filterNot { it in DIRECTION_MARKS }?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
+    /** Unicode isolates that Anki puts around numbers ("<\u206810\u2069m"). */
+    private val DIRECTION_MARKS = setOf('\u2066', '\u2067', '\u2068', '\u2069')
+
     /** The ease to send to AnkiDroid when [button] is tapped, or null if that button isn't valid for the card. */
     @JvmStatic
     fun easeFor(button: Int, buttonCount: Int): Int? {

@@ -120,6 +120,26 @@ object CardReview {
         Notifications.create().showNotification(context, state.toCardInfo(), state.deckName, isSilent = true, replace = false)
     }
 
+    /**
+     * Buries the displayed card until tomorrow and stores the next card: AnkiDroid's "bury", not an answer. Only if
+     * [card] is still the displayed one, like [answer]. Does ContentProvider I/O: off the main thread.
+     *
+     * @return whether it was buried
+     */
+    fun bury(context: Context, card: CardSync.CardKey): Boolean = synchronized(answerLock) {
+        val anki = AnkiDroidHelper(context)
+        val localState = anki.storedState?.takeIf { it.hasCard() }
+        if (localState == null || CardSync.CardKey(localState.noteID, localState.cardOrd) != card) {
+            Log.i(TAG, "bury for note ${card.noteId}, ord ${card.ord} ignored: it isn't the displayed card any more")
+            return false
+        }
+        Log.i(TAG, "burying note ${localState.noteID}, ord ${localState.cardOrd}")
+        anki.buryCard(localState.noteID, localState.cardOrd)
+        ReviewTimer.clear(context)
+        CardStateController.showNextCard(context, silent = true)
+        true
+    }
+
     /** Hides the answer again: a card withdrawn unanswered ([NudgeSession]) comes back as a question. */
     fun hideAnswer(context: Context) {
         prefs(context).edit().remove(KEY_REVEALED_CARD).remove(KEY_PAGE_CARD).apply()

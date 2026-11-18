@@ -69,6 +69,9 @@ object AnkiDroidContract {
         const val MEDIA_FILES = "media_files"
         const val EASE = "answer_ease"
         const val TIME_TAKEN = "time_taken"
+
+        /** Write-only: 1 buries the card (until tomorrow), instead of answering it. */
+        const val BURY = "buried"
     }
 
     object Deck {
