@@ -1,9 +1,25 @@
-"""The cards a prompt asks, through Anki's own scheduler (2.1.49: v2, or v3 with its compatibility calls)."""
+"""The cards a prompt asks, through Anki's own scheduler: its legacy calls (getCard, answerCard, nextIvlStr), which
+Anki 2.1.49 (v2 or v3) and current Anki, forks included, all have. The answers get the scheduler's own states (FSRS,
+or a fork's FSRS-7 or RWKV)."""
 from __future__ import annotations
 
 from typing import List, Optional
 
 from . import rules
+
+try:
+    from anki.buildinfo import version as _ANKI_VERSION
+except Exception:  # pragma: no cover
+    _ANKI_VERSION = ""
+
+
+def _before_2_1_50() -> bool:
+    """Anki before 2.1.50 needs its queues reset and its collection saved; later versions do it themselves (and warn)."""
+    parts = _ANKI_VERSION.split(".")
+    return len(parts) >= 3 and parts[0] == "2" and parts[1] == "1" and parts[2][:2].isdigit() and int(parts[2][:2]) < 50
+
+
+_OLD_ANKI = _before_2_1_50()
 
 
 class CardSource:
@@ -26,7 +42,7 @@ class CardSource:
 
     def _reset(self) -> None:
         reset = getattr(self.col.sched, "reset", None)
-        if reset is not None:
+        if _OLD_ANKI and reset is not None:
             reset()
 
     def _select(self, deck_id) -> None:
@@ -62,7 +78,8 @@ class CardSource:
         if ease is None:
             return False
         self.col.sched.answerCard(card, ease)
-        self.col.autosave()
+        if _OLD_ANKI:
+            self.col.autosave()
         return True
 
     def bury(self, card) -> None:
@@ -77,7 +94,8 @@ class CardSource:
             if self.col.decks.get_current_id() != self.original:
                 self.col.decks.select(self.original)
             self._reset()
-            self.col.save()
+            if _OLD_ANKI:
+                self.col.save()
         except Exception:
             pass
 

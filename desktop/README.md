@@ -1,6 +1,7 @@
 # Micro Review Desktop
 
-An Anki add-on (Anki 2.1.49 and later, Windows) that does on the PC what Micro Review Focus does on the phone:
+An Anki add-on (Anki 2.1.49 to current Anki 26.09 and forks built on it, such as the FSRS-7 / RWKV fork; Windows)
+that does on the PC what Micro Review Focus does on the phone:
 
 - **A few cards every so often**: 5 cards after every 20 minutes of actual use of the PC (mouse or keyboard), in a
   window that stays on top until they're answered. Pass or Fail, each counts; **Bury** puts a card away until
@@ -40,4 +41,5 @@ remainder when the use stops; "0" to resume).
 - In a real Anki 2.1.49 (`pip install anki==2.1.49 aqt==2.1.49 PyQt5==5.15.11 PyQtWebEngine==5.15.7 "protobuf<3.21"`,
   with `PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python`), under `xvfb-run`, with a throwaway profile and a driver
   add-on: the window, the 1-second lock, answers, bury, Keep going, skip, snooze and quit were checked this way.
+  Also in Anki 26.09.4 with Qt 6 (`pip install aqt==26.9.4`; under Xvfb, Qt 6 needs `libxcb-cursor0`).
   Not checkable there: the Windows calls (idle time, games, autostart) and the tray (no tray under Xvfb).
