@@ -5,6 +5,7 @@ Anki 2.1.49 runs Python 3.9: no newer syntax here.
 from __future__ import annotations
 
 import datetime
+import ntpath
 import secrets
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional, Sequence, Tuple
@@ -137,6 +138,20 @@ def display_code(code: str) -> str:
 def topic(code: str) -> str:
     """The relay topic the phone reads (the phone's PcPairing.topic)."""
     return "mrf-" + code
+
+
+def anki_program(argv0: str, executable: str) -> Optional[str]:
+    """Anki's own program on Windows, to start it with Windows, or None when Anki runs from a Python install.
+
+    Anki 26.05 and later (Briefcase installer): argv[0] is Anki.exe and sys.executable the bundled pythonw.exe.
+    Anki 2.1.x (PyInstaller): both are anki.exe. The 25.07-25.09 launcher runs Anki from a Python
+    environment: neither is Anki's program.
+    """
+    for path in (argv0, executable):
+        name = ntpath.basename(path or "").lower()
+        if name.endswith(".exe") and not name.startswith("python"):
+            return path
+    return None
 
 
 @dataclass

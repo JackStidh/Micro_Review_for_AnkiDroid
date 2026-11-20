@@ -137,3 +137,14 @@ def test_steam_minecraft_and_fullscreen_are_games():
 def test_a_fullscreen_browser_is_not_a_game():
     assert reason(foreground_fullscreen=True, foreground_process="chrome.exe") is None
     assert rules.game_reason(GameSigns(exclusive_fullscreen=True), RULES, False, BROWSERS) is None
+
+
+def test_anki_program_for_each_installer():
+    # Anki 26.05+ (Briefcase): argv[0] is the program, sys.executable the bundled Python.
+    assert rules.anki_program(r"C:\Users\u\AppData\Local\Programs\Anki\Anki.exe",
+                              r"C:\Users\u\AppData\Local\Programs\Anki\pythonw.exe") == r"C:\Users\u\AppData\Local\Programs\Anki\Anki.exe"
+    # Anki 2.1.x (PyInstaller): both are anki.exe.
+    assert rules.anki_program(r"C:\Program Files\Anki\anki.exe", r"C:\Program Files\Anki\anki.exe") == r"C:\Program Files\Anki\anki.exe"
+    # Anki run from Python (the 25.07 launcher, a pip install): no program to start.
+    assert rules.anki_program("-c", r"C:\x\.venv\Scripts\pythonw.exe") is None
+    assert rules.anki_program("", "") is None

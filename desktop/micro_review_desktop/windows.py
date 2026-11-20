@@ -8,7 +8,7 @@ import subprocess
 import sys
 from typing import List, Optional, Tuple
 
-from .rules import GameSigns
+from .rules import GameSigns, anki_program
 
 IS_WINDOWS = sys.platform == "win32"
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
@@ -187,10 +187,10 @@ def game_signs() -> GameSigns:
 
 def anki_executable() -> Optional[str]:
     """Anki's own program, if Anki runs from its installer (not from a Python install)."""
-    exe = sys.executable or ""
-    if not IS_WINDOWS or not exe.lower().endswith(".exe") or os.path.basename(exe).lower().startswith("python"):
+    if not IS_WINDOWS:
         return None
-    return exe
+    exe = anki_program(sys.argv[0] if sys.argv else "", sys.executable or "")
+    return os.path.abspath(exe) if exe and os.path.isfile(exe) else None
 
 
 def autostart_command(profile: str) -> Optional[str]:
