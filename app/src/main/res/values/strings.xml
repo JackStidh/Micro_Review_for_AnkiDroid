@@ -182,7 +182,7 @@
     <string name="focus_ankiweb">AnkiWeb</string>
     <string name="focus_ankiweb_sync">Sync AnkiDroid</string>
     <string name="focus_ankiweb_pending">Answers wait to be synced: as your next card screen closes, or now. Asked last: %1$s.</string>
-    <string name="focus_ankiweb_synced">Nothing waiting. Asked AnkiDroid last: %1$s. AnkiDroid only syncs with its screen up for a moment, so it's only asked as a card screen closes, hidden behind it. Cards your PC reviewed are skipped until then.</string>
+    <string name="focus_ankiweb_synced">Nothing waiting. Asked AnkiDroid last: %1$s. AnkiDroid only syncs with its screen up for a moment, so it\'s only asked as a card screen closes, hidden behind it. Cards your PC reviewed are skipped until then.</string>
     <string name="syncing_cover">Syncing with AnkiWeb…</string>
     <string name="focus_ankiweb_never">never</string>
     <string name="focus_ankiweb_sync_now">Sync now</string>
