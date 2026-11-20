@@ -73,6 +73,55 @@ object CardOverlay {
         }
     }
 
+    /**
+     * A short full-screen "Syncing" cover, to ask AnkiDroid to sync ([AnkiSync]) when the plugged-in phone is in use
+     * and answers wait: Android lets this app start AnkiDroid while one of its windows is visible, and the cover hides
+     * AnkiDroid's moment in front, then fades out. From any thread; nothing if a card is shown (its close syncs).
+     */
+    fun showSyncCover(context: Context) {
+        val appContext = context.applicationContext
+        main.post {
+            if (isShowing || syncCoverShown || !FocusState.canOpenOverApps(appContext) || !AnkiSync.isDue(appContext)) return@post
+            val themed = ContextThemeWrapper(appContext, R.style.Theme_AnkiNotifications)
+            val label = android.widget.TextView(themed).apply {
+                setText(R.string.syncing_cover)
+                textSize = 20f
+                gravity = android.view.Gravity.CENTER
+            }
+            val frame = FrameLayout(themed).apply {
+                setBackgroundColor(backgroundColor(themed))
+                addView(label, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            }
+            val params = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.OPAQUE,
+            ).apply { title = "Micro Review sync" }
+            try {
+                windowManager(appContext).addView(frame, params)
+            } catch (e: Exception) {
+                FocusLog.i(appContext, "can't show the sync cover: $e")
+                return@post
+            }
+            syncCoverShown = true
+            // Once the cover is drawn, so that it is visible when AnkiDroid is started.
+            frame.post {
+                val asked = AnkiSync.request(appContext, "plugged in")
+                frame.animate().setStartDelay(if (asked) SYNC_HOLD_MS else 0L).setDuration(SYNC_FADE_MS).alpha(0f)
+                    .withEndAction {
+                        remove(appContext, frame)
+                        syncCoverShown = false
+                    }
+                    .start()
+            }
+        }
+    }
+
+    /** Main thread only. */
+    private var syncCoverShown = false
+
     private fun show(context: Context, mode: FocusCardController.Mode, app: String?) {
         if (!FocusState.canOpenOverApps(context)) {
             FocusLog.i(context, "can't show the card: \"Display over other apps\" isn't allowed")

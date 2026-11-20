@@ -9,19 +9,24 @@ class AnkiSyncRulesTest {
 
     @Test
     fun nothingToSyncNoRequest() {
-        assertFalse(AnkiSyncRules.due(pending = false, requestedAt = 0, now = 100 * minute))
+        assertFalse(AnkiSyncRules.due(pending = false, requestedAt = 0, now = 100 * minute, pluggedIn = true))
     }
 
     @Test
     fun answersWaitingAskOnceInAWhile() {
-        assertTrue(AnkiSyncRules.due(pending = true, requestedAt = 0, now = 100 * minute))
-        assertFalse(AnkiSyncRules.due(pending = true, requestedAt = 90 * minute, now = 100 * minute))
-        assertTrue(AnkiSyncRules.due(pending = true, requestedAt = 85 * minute, now = 100 * minute))
+        assertTrue(AnkiSyncRules.due(pending = true, requestedAt = 0, now = 100 * minute, pluggedIn = true))
+        assertFalse(AnkiSyncRules.due(pending = true, requestedAt = 90 * minute, now = 100 * minute, pluggedIn = true))
+        assertTrue(AnkiSyncRules.due(pending = true, requestedAt = 85 * minute, now = 100 * minute, pluggedIn = true))
+    }
+
+    @Test
+    fun onlyWhilePluggedIn() {
+        assertFalse(AnkiSyncRules.due(pending = true, requestedAt = 0, now = 100 * minute, pluggedIn = false))
     }
 
     @Test
     fun aClockSetBackDoesntBlockForever() {
-        assertTrue(AnkiSyncRules.due(pending = true, requestedAt = 200 * minute, now = 100 * minute))
+        assertTrue(AnkiSyncRules.due(pending = true, requestedAt = 200 * minute, now = 100 * minute, pluggedIn = true))
     }
 
     @Test

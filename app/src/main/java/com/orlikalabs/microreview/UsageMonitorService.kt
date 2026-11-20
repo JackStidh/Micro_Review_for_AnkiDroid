@@ -60,6 +60,7 @@ class UsageMonitorService : Service() {
     private var shownState: String? = null
     private var loggedPause: Interruptions.Reason? = null
     private var loggedNoOverlay: String? = null
+    private var lastSyncCheck = 0L
 
     private val pollTask = Runnable { poll() }
 
@@ -196,7 +197,18 @@ class UsageMonitorService : Service() {
         }
         NudgeSession.reconcile(this)
         if (FocusSettings.nudgesEnabled(this)) nudgeStep(elapsed) else MonitorStatus.nextCardMs = null
+        syncStep(now)
         updateNotification(now)
+    }
+
+    /**
+     * Plugged in, unlocked, answers waiting: AnkiDroid is asked to sync under a short cover ([CardOverlay.showSyncCover]).
+     * Looked at every half minute, not every second.
+     */
+    private fun syncStep(now: Long) {
+        if (now - lastSyncCheck < SYNC_CHECK_MS) return
+        lastSyncCheck = now
+        if (!CardOverlay.isShowing && !FocusReviewActivity.isShown && AnkiSync.isDue(this)) CardOverlay.showSyncCover(this)
     }
 
     private fun nudgeStep(elapsed: Long) {
@@ -327,6 +339,7 @@ class UsageMonitorService : Service() {
         private const val GATE_POLL_MS = 500L
         private const val FIRST_LOOKBACK_MS = 30 * 60_000L
         private const val DUE_CHECK_INTERVAL_MS = 5 * 60_000L
+        private const val SYNC_CHECK_MS = 30_000L
 
         /** How old the PC's state may be when a gated app opens, and while a card waits ([PcActivity]). */
         private const val PC_FRESH_FOR_GATE_MS = 20_000L
