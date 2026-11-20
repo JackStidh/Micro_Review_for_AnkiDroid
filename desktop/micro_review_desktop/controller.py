@@ -12,7 +12,7 @@ from __future__ import annotations
 import datetime
 import sys
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from aqt import gui_hooks
 from aqt.qt import QAction, QIcon, QMenu, QSystemTrayIcon, QTimer
@@ -412,17 +412,37 @@ class Controller:
             self.tell_phone_synced()
 
     def tell_phone_synced(self) -> None:
+        """Tells the phone the PC's answers are on AnkiWeb, with the cards reviewed since the last time: the phone
+        passes over them until it syncs, which it can only do as its next card screen closes."""
         if not self.online or self.mw.pm is None:
             return
         topic = rules.sync_topic(self.pairing_code())
+        now_ms = int(time.time() * 1000)
+        cards: List[Tuple[int, int]] = []
+        if self.mw.col is not None:
+            since = rules.reviews_since(self.state.get("told_phone_ms"), now_ms)
+            try:
+                cards = [
+                    (int(nid), int(ordinal))
+                    for nid, ordinal in self.mw.col.db.all(
+                        "select c.nid, c.ord from revlog r join cards c on c.id = r.cid where r.id > ? order by r.id desc limit ?",
+                        since,
+                        rules.SYNCED_CARDS_MAX * 3,
+                    )
+                ]
+            except Exception as error:
+                store.log("couldn't list the reviews for the phone: %r" % error)
+        message = rules.synced_message(cards)
 
         def done(future) -> None:
             try:
                 future.result()
+                self.state["told_phone_ms"] = now_ms
+                self._save_state()
             except Exception as error:
                 store.log("couldn't tell the phone about the sync: %r" % error)
 
-        self.mw.taskman.run_in_background(lambda: relay.post_synced(topic), done)
+        self.mw.taskman.run_in_background(lambda: relay.post_synced(topic, message), done)
 
     # Status
 

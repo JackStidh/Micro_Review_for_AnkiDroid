@@ -141,8 +141,36 @@ def topic(code: str) -> str:
 
 
 def sync_topic(code: str) -> str:
-    """The relay topic where the PC says it synced its answers, for the phone to sync too (PcPairing.syncTopic)."""
+    """The relay topic where the PC says it synced its answers and which cards it reviewed (PcPairing.syncTopic)."""
     return topic(code) + "-sync"
+
+
+# The relay takes messages up to 4096 bytes: 200 cards ("1712345678901:0," each) fit.
+SYNCED_CARDS_MAX = 200
+
+# The relay keeps messages 12 hours: older reviews can't matter to the phone.
+SYNCED_LOOKBACK_MS = 12 * 3600 * 1000
+
+
+def synced_message(cards: Iterable[Tuple[int, int]]) -> str:
+    """"synced" and the cards reviewed here (note ID, card ordinal), latest first, each once, at most
+    SYNCED_CARDS_MAX: the phone passes over them until it syncs (PcPairing.syncedCards). A plain "synced" when
+    there are none.
+    """
+    keys: List[str] = []
+    for nid, ordinal in cards:
+        key = "%d:%d" % (nid, ordinal)
+        if key not in keys:
+            keys.append(key)
+            if len(keys) >= SYNCED_CARDS_MAX:
+                break
+    return "synced " + ",".join(keys) if keys else "synced"
+
+
+def reviews_since(told_phone_ms: Optional[int], now_ms: int) -> int:
+    """From when (revlog ID, epoch milliseconds) to list the reviews for the phone: its last message, at most
+    SYNCED_LOOKBACK_MS back."""
+    return max(int(told_phone_ms or 0), now_ms - SYNCED_LOOKBACK_MS)
 
 
 def wants_pull(logged_in: bool, enabled: bool, now: float, synced_at: float, tried_at: float, max_age: float) -> bool:

@@ -13,7 +13,7 @@ that does on the PC what Micro Review Focus does on the phone:
 - **Pauses the phone** while the PC is used: no cards and no gate on the phone until 5 minutes after the last mouse
   or keyboard input. Pair the phone with the code in Tools › Micro Review Desktop.
 - **Syncs before and after the cards**, in the background (no sync window, nothing comes to the front): before, to
-  get the phone's latest answers, so a card isn't reviewed twice; after, then it tells the phone, which syncs too. A
+  get the phone's latest answers, so a card isn't reviewed twice; after, then it tells the phone which cards it reviewed. A
   full sync (after a note type change, for example) is left to Anki's Sync button, with a message in the tray.
 - **Starts with Windows**, in the tray; closing Anki's window keeps it there (File › Exit or the tray's Quit Anki quit).
 - The card's buttons wait a second after the window appears, and the window doesn't take the keyboard until it is
@@ -37,7 +37,9 @@ Cards come from Anki's own scheduler and look as in Anki's reviewer (template, s
 The phone side is `PcActivity.kt` / `PcPairing.kt`: the topic is `mrf-<code>`; each message is a number of seconds
 counted from the relay's time; the latest message counts ("420" while in use, refreshed every 4 minutes; the
 remainder when the use stops; "0" to resume). After a sync that carries the PC's answers (its own after the cards,
-or Anki's), the PC posts "synced" to `mrf-<code>-sync`; the phone reads it while in use and syncs AnkiDroid.
+or Anki's), the PC posts "synced" and the cards reviewed since its last message to `mrf-<code>-sync`
+("synced 1712345678901:0,...", note ID and card ordinal, the latest 200): the phone passes over them until it syncs
+AnkiDroid, which it only does as its next card screen closes (AnkiDroid can't sync unseen).
 
 ## Tests
 

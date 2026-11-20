@@ -22,7 +22,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import com.orlikalabs.microreview.ui.CardScreen
-import com.orlikalabs.microreview.ui.SyncCoverScreen
 import com.orlikalabs.microreview.ui.aero.AeroTheme
 import com.orlikalabs.microreview.ui.aero.AeroThemes
 import com.orlikalabs.microreview.ui.aero.OverlayComposeOwner
@@ -34,8 +33,9 @@ import com.orlikalabs.microreview.ui.aero.OverlayComposeOwner
  *
  * Drawn with Compose ([CardScreen]), in the chosen theme; the window gives Compose a lifecycle of its own
  * ([OverlayComposeOwner]). While shown, it holds the audio focus, so a video playing behind it pauses. When it
- * closes after answers, it asks AnkiDroid to sync ([AnkiSync]): allowed while this window is visible, which then
- * stays a moment under a "Syncing" veil over AnkiDroid's moment in front, and fades out. Used on the main thread;
+ * closes after answers, or after the PC synced its own, it asks AnkiDroid to sync ([AnkiSync]): allowed while this
+ * window is visible, which then stays a moment under a "Syncing" veil over AnkiDroid's moment in front, and fades
+ * out. That's the only time the phone syncs by itself: AnkiDroid can't sync unseen. Used on the main thread;
  * [request], [onScreenOff] and [onForegroundChanged] may be called from any thread.
  */
 object CardOverlay {
@@ -85,54 +85,6 @@ object CardOverlay {
             }
         }
     }
-
-    /**
-     * A short full-screen "Syncing" cover, to ask AnkiDroid to sync ([AnkiSync]) while the phone is in use, when the
-     * PC synced its answers or answers wait here: Android lets this app start AnkiDroid while one of its windows is visible, and the cover hides
-     * AnkiDroid's moment in front, then fades out. From any thread; nothing if a card is shown (its close syncs).
-     */
-    fun showSyncCover(context: Context) {
-        val appContext = context.applicationContext
-        main.post {
-            if (isShowing || syncCoverShown || !FocusState.canOpenOverApps(appContext) || !AnkiSync.isDueInUse(appContext)) return@post
-            val themed = ContextThemeWrapper(appContext, R.style.Theme_AnkiNotifications)
-            val palette = AeroThemes.current(appContext)
-            val frame = FrameLayout(themed)
-            frame.addView(
-                composeView(themed) { AeroTheme(palette) { SyncCoverScreen() } },
-                FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
-            )
-            attachOwner(frame)
-            val params = WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                PixelFormat.OPAQUE,
-            ).apply { title = "Micro Review sync" }
-            try {
-                windowManager(appContext).addView(frame, params)
-            } catch (e: Exception) {
-                FocusLog.i(appContext, "can't show the sync cover: $e")
-                owners.remove(frame)?.destroy()
-                return@post
-            }
-            syncCoverShown = true
-            // Once the cover is drawn, so that it is visible when AnkiDroid is started.
-            frame.post {
-                val asked = AnkiSync.request(appContext, if (AnkiSync.isPending(appContext)) "answers waiting" else "the PC synced")
-                frame.animate().setStartDelay(if (asked) SYNC_HOLD_MS else 0L).setDuration(SYNC_FADE_MS).alpha(0f)
-                    .withEndAction {
-                        remove(appContext, frame)
-                        syncCoverShown = false
-                    }
-                    .start()
-            }
-        }
-    }
-
-    /** Main thread only. */
-    private var syncCoverShown = false
 
     private fun show(context: Context, mode: FocusCardController.Mode, app: String?) {
         if (!FocusState.canOpenOverApps(context)) {

@@ -24,6 +24,20 @@ class PcPairingTest {
     }
 
     @Test
+    fun theCardsThePcReviewed() {
+        fun line(message: String) = """{"id":"a","time":1763490000,"event":"message","topic":"mrf-x-sync","message":"$message"}"""
+        assertEquals(
+            listOf(CardSync.CardKey(1712345678901, 0), CardSync.CardKey(1712345678902, 1)),
+            PcPairing.syncedCards(line("synced 1712345678901:0,1712345678902:1")),
+        )
+        // An older add-on, or nothing reviewed since its last message.
+        assertEquals(emptyList<CardSync.CardKey>(), PcPairing.syncedCards(line("synced")))
+        assertEquals(listOf(CardSync.CardKey(5, 2)), PcPairing.syncedCards(line("synced 5:2,junk,7")))
+        assertNull(PcPairing.syncedCards(line("300")))
+        assertNull(PcPairing.syncedCards("""{"id":"a","time":1763490000,"event":"open","topic":"mrf-x-sync"}"""))
+    }
+
+    @Test
     fun aMessagePausesFromTheRelaysTime() {
         val line = """{"id":"abc","time":1763490000,"expires":1763533200,"event":"message","topic":"mrf-x","message":"300"}"""
         assertEquals((1763490000L + 300) * 1000, PcPairing.pausedUntil(line))

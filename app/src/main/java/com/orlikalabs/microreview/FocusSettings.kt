@@ -14,7 +14,6 @@ object FocusSettings {
     private const val PREFS = "com.orlikalabs.microreview.focus"
 
     private const val KEY_NUDGES = "nudges_enabled"
-    /** "_2": the full-screen card became the default, whatever was chosen before. */
     private const val KEY_DEFAULT_INTERVAL = "default_interval_minutes"
     private const val KEY_APP_INTERVALS = "app_intervals"
     private const val KEY_PASS_FAIL = "pass_fail_only"

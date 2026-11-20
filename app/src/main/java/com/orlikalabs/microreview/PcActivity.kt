@@ -13,8 +13,9 @@ import java.net.URL
  * use starts, every few minutes while it lasts, and when it stops). The phone reads it just before it would show
  * a card or a gate ([refresh], from the monitor's thread); [isInUse] only answers from the last read.
  *
- * The PC also says when it synced its answers with AnkiWeb, on a second topic: the phone reads it while it is in use
- * ([refreshPcSync]) and syncs too ([AnkiSync]), so its next card isn't one already reviewed on the PC.
+ * The PC also says when it synced its answers with AnkiWeb, and which cards it reviewed, on a second topic: the phone
+ * reads it while it is in use and before a card ([refreshPcSync]), passes over those cards and syncs as its next card
+ * screen closes ([AnkiSync]), so its next card isn't one already reviewed on the PC.
  */
 object PcActivity {
     const val RELAY = "https://ntfy.sh"
@@ -62,17 +63,20 @@ object PcActivity {
     }
 
     /**
-     * Reads when the PC last synced its answers ([AnkiSync.setPcSyncedAt]) if the last read is older than [maxAgeMs].
-     * Network I/O: off the main thread.
+     * Reads when the PC last synced its answers ([AnkiSync.setPcSyncedAt]) and the cards it reviewed
+     * ([AnkiSync.addPcReviewed]) if the last read is older than [maxAgeMs]. Network I/O: off the main thread.
      */
     fun refreshPcSync(context: Context, maxAgeMs: Long, now: Long = System.currentTimeMillis()) {
         val code = FocusSettings.pcPairingCode(context) ?: return
         if (now - pcSyncCheckedAt in 0 until maxAgeMs) return
         pcSyncCheckedAt = now
         var latest = 0L
-        if (read(PcPairing.syncTopic(code), SYNC_SINCE) { line -> latest = maxOf(latest, PcPairing.messageTime(line)) }) {
-            AnkiSync.setPcSyncedAt(context, latest)
+        val ok = read(PcPairing.syncTopic(code), SYNC_SINCE) { line ->
+            val time = PcPairing.messageTime(line)
+            latest = maxOf(latest, time)
+            PcPairing.syncedCards(line)?.let { cards -> AnkiSync.addPcReviewed(context, cards, time) }
         }
+        if (ok) AnkiSync.setPcSyncedAt(context, latest)
     }
 
     /** The topic's messages since [since], line by line; false (and [lastError]) if the relay couldn't be read. */

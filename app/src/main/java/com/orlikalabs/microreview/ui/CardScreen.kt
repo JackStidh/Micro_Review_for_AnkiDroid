@@ -410,7 +410,7 @@ private fun SyncVeil() {
 
 /** "Syncing with AnkiWeb", on glass. */
 @Composable
-fun SyncBadge() {
+private fun SyncBadge() {
     GlassPanel(padding = PaddingValues(horizontal = 26.dp, vertical = 20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AeroSpinner(36.dp)
@@ -420,13 +420,5 @@ fun SyncBadge() {
                 Text(stringResource(R.string.syncing_cover), style = AeroText.body(15))
             }
         }
-    }
-}
-
-/** The short cover while AnkiDroid is asked to sync ([com.orlikalabs.microreview.CardOverlay.showSyncCover]). */
-@Composable
-fun SyncCoverScreen() {
-    AeroBackground(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { SyncBadge() }
     }
 }

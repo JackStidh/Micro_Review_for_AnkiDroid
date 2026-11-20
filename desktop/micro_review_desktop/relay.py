@@ -1,4 +1,4 @@
-"""Telling the phone that the PC is in use, and that it synced, through ntfy.sh (a free public publish/subscribe
+"""Telling the phone that the PC is in use, and that it synced (with the cards it reviewed), through ntfy.sh (a free public publish/subscribe
 relay), and whether the PC is online. Both block: run them off the main thread.
 """
 from __future__ import annotations
@@ -25,9 +25,10 @@ def post_pause(topic: str, seconds: int, timeout: float = 8.0) -> None:
     _post(topic, str(int(seconds)), timeout)
 
 
-def post_synced(topic: str, timeout: float = 8.0) -> None:
-    """The PC's answers are on AnkiWeb: the phone syncs to get them (on its sync topic). Raises on failure."""
-    _post(topic, "synced", timeout)
+def post_synced(topic: str, message: str = "synced", timeout: float = 8.0) -> None:
+    """The PC's answers are on AnkiWeb, and which cards it reviewed (rules.synced_message), on the phone's sync
+    topic. Raises on failure."""
+    _post(topic, message, timeout)
 
 
 def _post(topic: str, message: str, timeout: float) -> None:

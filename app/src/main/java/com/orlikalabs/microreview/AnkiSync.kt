@@ -11,23 +11,22 @@ import android.net.NetworkCapabilities
  *
  * AnkiDroid only syncs when it is opened or closed, and Micro Review answers through its API without opening it:
  * without this, the answers stayed on the phone until AnkiDroid was next opened. AnkiDroid takes a sync request from
- * other apps (the "DO_SYNC" action, the one Tasker uses): it shows its deck list for a moment, starts the sync in the
- * background and closes. It ignores requests less than 2 minutes apart, and syncs on a metered network only if its
- * own setting allows it.
+ * other apps (the "DO_SYNC" action, the one Tasker uses), but only through its screen: it shows its deck list for a
+ * moment, starts the sync in the background and closes. There is no way to sync it unseen. It ignores requests less
+ * than 2 minutes apart, and syncs on a metered network only if its own setting allows it.
  *
- * Right after each set of cards, so the PC doesn't show a card already reviewed here; and when the PC (Micro Review
- * Desktop) says on the relay that it synced its answers, before the next card here ([AnkiSyncRules]). "Sync now" in
- * the settings any time.
- *
- * Starting AnkiDroid from the background is only allowed while one of this app's windows is visible: the request is
- * made as the card overlay closes ([CardOverlay]), or under a short "Syncing" cover ([CardOverlay.showSyncCover])
- * while the phone is in use, both fading out over AnkiDroid's moment in front; or from this app's screens.
+ * So the request is only made as a card screen closes, under it ([CardOverlay], [FocusReviewActivity]): Android lets
+ * this app start AnkiDroid while one of its windows is visible, and the card screen stays a moment over AnkiDroid's
+ * moment in front, then fades out. Then when answers wait here, or the PC (Micro Review Desktop) said on the relay
+ * that it synced its answers; and "Sync now" any time. Until the phone's next sync, the cards the PC said it
+ * reviewed are passed over ([skipped]), so they aren't reviewed here a second time.
  */
 object AnkiSync {
     private const val PREFS = "com.orlikalabs.microreview.anki_sync"
     private const val KEY_PENDING = "pending"
     private const val KEY_REQUESTED_AT = "requested_at"
     private const val KEY_PC_SYNCED_AT = "pc_synced_at"
+    private const val KEY_PC_REVIEWED = "pc_reviewed"
     const val ACTION_DO_SYNC = "com.ichi2.anki.DO_SYNC"
     private const val ANKIDROID = "com.ichi2.anki"
 
@@ -47,13 +46,25 @@ object AnkiSync {
         if (at > pcSyncedAt(context)) prefs(context).edit().putLong(KEY_PC_SYNCED_AT, at).apply()
     }
 
+    /** The PC said at [time] that it reviewed [cards]: passed over until the phone syncs ([skipped]). */
+    @Synchronized
+    fun addPcReviewed(context: Context, cards: Collection<CardSync.CardKey>, time: Long) {
+        if (cards.isEmpty()) return
+        val prefs = prefs(context)
+        val all = AnkiSyncRules.withPcReviewed(
+            AnkiSyncRules.decode(prefs.getString(KEY_PC_REVIEWED, null)), cards, time, requestedAt(context)
+        )
+        prefs.edit().putString(KEY_PC_REVIEWED, AnkiSyncRules.encode(all)).apply()
+    }
+
+    /** The cards reviewed on the PC and not synced here yet: not to be shown, nor answered. */
+    @JvmStatic
+    fun skipped(context: Context): Set<CardSync.CardKey> =
+        AnkiSyncRules.skipped(AnkiSyncRules.decode(prefs(context).getString(KEY_PC_REVIEWED, null)), requestedAt(context))
+
     /** As a card screen closes ([AnkiSyncRules.dueAfterCards]), the phone being online. */
     fun isDueAfterCards(context: Context, now: Long = System.currentTimeMillis()): Boolean =
-        AnkiSyncRules.dueAfterCards(isPending(context), requestedAt(context), now) && isOnline(context)
-
-    /** While the phone is in use ([AnkiSyncRules.dueInUse]), the phone being online. */
-    fun isDueInUse(context: Context, now: Long = System.currentTimeMillis()): Boolean =
-        AnkiSyncRules.dueInUse(isPending(context), requestedAt(context), now, pcSyncedAt(context)) && isOnline(context)
+        AnkiSyncRules.dueAfterCards(isPending(context), requestedAt(context), now, pcSyncedAt(context)) && isOnline(context)
 
     /** Whether AnkiDroid in front now is the moment that follows a request (not the user opening it). */
     fun isFlash(context: Context, now: Long = System.currentTimeMillis()): Boolean =

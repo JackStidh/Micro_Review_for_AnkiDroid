@@ -199,21 +199,21 @@ class UsageMonitorService : Service() {
         }
         NudgeSession.reconcile(this)
         if (FocusSettings.nudgesEnabled(this)) nudgeStep(elapsed) else MonitorStatus.nextCardMs = null
-        syncStep(now)
+        relayStep(now)
         updateNotification(now)
     }
 
     /**
-     * In use, no card screen open: when the PC synced its answers since the phone's last sync (read from the relay),
-     * or answers wait here, AnkiDroid is asked to sync under a short cover ([CardOverlay.showSyncCover]). Looked at
-     * right after unlocking, then every half minute; the relay is read at most every 2 minutes.
+     * In use, no card screen open: reads when the PC synced its answers and which cards it reviewed (from the relay),
+     * for the next card screen to pass over them and to sync as it closes ([AnkiSync]). Nothing is shown: AnkiDroid
+     * can only sync with its screen in front, so it's only asked under a closing card screen. Looked at right after
+     * unlocking, then every half minute; the relay is read at most every 2 minutes.
      */
-    private fun syncStep(now: Long) {
+    private fun relayStep(now: Long) {
         if (lastSyncCheck != 0L && now - lastSyncCheck < SYNC_CHECK_MS) return
         lastSyncCheck = now
         if (CardOverlay.isShowing || FocusReviewActivity.isShown) return
         PcActivity.refreshPcSync(this, PC_SYNC_FRESH_MS)
-        if (AnkiSync.isDueInUse(this)) CardOverlay.showSyncCover(this)
     }
 
     private fun nudgeStep(elapsed: Long) {

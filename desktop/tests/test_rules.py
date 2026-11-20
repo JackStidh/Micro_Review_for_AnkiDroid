@@ -163,3 +163,24 @@ def test_pull_before_cards():
     # Not logged in, or syncing turned off.
     assert not rules.wants_pull(False, True, now=1000.0, synced_at=-1e9, tried_at=-1e9, max_age=60)
     assert not rules.wants_pull(True, False, now=1000.0, synced_at=-1e9, tried_at=-1e9, max_age=60)
+
+
+def test_synced_message_lists_the_cards_once_latest_first():
+    assert rules.synced_message([]) == "synced"
+    assert rules.synced_message([(1712345678901, 0), (1712345678902, 1), (1712345678901, 0)]) == (
+        "synced 1712345678901:0,1712345678902:1"
+    )
+
+
+def test_synced_message_fits_the_relay():
+    message = rules.synced_message((1712345678901 + i, 12) for i in range(1000))
+    assert message.count(",") == rules.SYNCED_CARDS_MAX - 1
+    assert len(message.encode("ascii")) < 4096
+
+
+def test_reviews_since_the_last_message_within_the_relays_12_hours():
+    now = 100 * 3600 * 1000
+    assert rules.reviews_since(None, now) == now - rules.SYNCED_LOOKBACK_MS
+    assert rules.reviews_since(now - 60_000, now) == now - 60_000
+    assert rules.reviews_since(1, now) == now - rules.SYNCED_LOOKBACK_MS
+

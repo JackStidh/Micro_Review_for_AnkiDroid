@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -136,9 +137,13 @@ public class AnkiDroidHelper {
         }
         // Fetch several due cards so the ones we can't display (sound in the question) can be skipped.
         List<CardInfo> cards = mSource.dueCards(deckID, scanLimit);
+        // Reviewed on the PC, not synced here yet: still due here, but not to be reviewed again.
+        Set<CardSync.CardKey> reviewedElsewhere = AnkiSync.skipped(mContext);
         List<CardInfo> displayable = new ArrayList<>();
         for (CardInfo card : cards) {
-            if (isDisplayable(card)) {
+            if (reviewedElsewhere.contains(new CardSync.CardKey(card.noteID, card.cardOrd))) {
+                Log.i("Notifications", "skipping card reviewed on the PC, noteID: " + card.noteID + ", ord: " + card.cardOrd);
+            } else if (isDisplayable(card)) {
                 displayable.add(card);
             } else {
                 Log.i("Notifications", "skipping card that can't be displayed, noteID: " + card.noteID + ", ord: " + card.cardOrd);
@@ -203,6 +208,10 @@ public class AnkiDroidHelper {
     public Boolean isCardDue(long deckId, long noteId, int cardOrd) {
         if (deckId == -1 || !mSource.isPermissionGranted()) {
             return null;
+        }
+        if (AnkiSync.skipped(mContext).contains(new CardSync.CardKey(noteId, cardOrd))) {
+            // Reviewed on the PC: answering it here would review it twice.
+            return false;
         }
         int[] deckCounts = getDeckCounts().get(deckId);
         Integer due = deckCounts == null ? null : deckCounts[0] + deckCounts[1] + deckCounts[2];

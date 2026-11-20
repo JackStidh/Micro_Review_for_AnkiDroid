@@ -296,6 +296,8 @@ class FocusCardController(private val context: Context, private val host: Host) 
         io.execute {
             if (sync) {
                 try {
+                    // The cards the PC reviewed since the phone's last sync are passed over (AnkiSync.skipped).
+                    PcActivity.refreshPcSync(app, PC_SYNC_FRESH_MS)
                     CardStateController.syncWithAnkiDroid(app)
                 } catch (e: Exception) {
                     FocusLog.i(app, "card check failed: $e")
@@ -372,6 +374,9 @@ class FocusCardController(private val context: Context, private val host: Host) 
 
         /** A card's buttons wait this long after it appears. */
         const val APPEAR_LOCK_MS = 1_000L
+
+        /** How old the PC's list of reviewed cards may be when a card screen opens ([PcActivity.refreshPcSync]). */
+        private const val PC_SYNC_FRESH_MS = 30_000L
 
         /** The name of [packageName] as the launcher shows it. */
         fun appLabel(context: Context, packageName: String?): String {
