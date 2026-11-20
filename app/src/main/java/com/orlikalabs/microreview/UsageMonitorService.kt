@@ -251,6 +251,8 @@ class UsageMonitorService : Service() {
     /** [app] came to the front, or is looked at again: the gate, if it must. */
     private fun gate(app: String) {
         if (!FocusSettings.gateEnabled(this)) return
+        // AnkiDroid in front for a moment after a sync request (AnkiSync): the user hasn't left the gated app.
+        if (app == ANKIDROID_PACKAGE && AnkiSync.isFlash(this)) return
         val before = FocusSettings.gatePass(this)
         val pass = GateRules.passAfter(before, app)
         if (pass != before) FocusSettings.setGatePass(this, pass)

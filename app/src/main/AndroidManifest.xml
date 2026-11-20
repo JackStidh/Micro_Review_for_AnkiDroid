@@ -21,6 +21,8 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <!-- "Pause while my PC is in use" (PcActivity): reads the PC's messages from the relay. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Whether the phone is online before asking AnkiDroid to sync (AnkiSync). -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
 
     <queries>

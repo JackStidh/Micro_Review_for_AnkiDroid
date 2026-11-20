@@ -310,6 +310,12 @@
     <string name="focus_pc_pause_detail">No cards, the gate is open, for 5 minutes after you last use your PC\'s mouse or keyboard. Your PC tells the phone through ntfy.sh, a free relay: only a number of seconds is sent.</string>
     <string name="focus_pc_paired">Paired with your PC</string>
     <string name="focus_pc_unpair">Unpair</string>
+    <string name="focus_ankiweb">AnkiWeb</string>
+    <string name="focus_ankiweb_sync">Sync AnkiDroid</string>
+    <string name="focus_ankiweb_pending">Answers wait to be synced. Asked AnkiDroid last: %1$s. Asked again after your next cards (at most every 15 min), or now.</string>
+    <string name="focus_ankiweb_synced">Nothing waiting. Asked AnkiDroid last: %1$s. If it doesn\'t sync on mobile data, allow it in AnkiDroid › Settings › Sync.</string>
+    <string name="focus_ankiweb_never">never</string>
+    <string name="focus_ankiweb_sync_now">Sync now</string>
     <string name="focus_diagnostics">Diagnostics</string>
     <string name="focus_diagnostics_copy">Copy</string>
     <string name="focus_diagnostics_copied">Copied: paste it where you report the problem.</string>

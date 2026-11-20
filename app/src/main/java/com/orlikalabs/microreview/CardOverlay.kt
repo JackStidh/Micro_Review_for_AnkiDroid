@@ -26,7 +26,9 @@ import android.window.OnBackInvokedDispatcher
  * other apps"). Unlike an activity, it can be shown from the background at any time: Android blocks activity starts
  * from the background, and the gate only worked while the app had just been in front.
  *
- * While shown, it holds the audio focus, so a video playing behind it pauses. Used on the main thread; [request],
+ * While shown, it holds the audio focus, so a video playing behind it pauses. When it closes after answers, it asks
+ * AnkiDroid to sync ([AnkiSync]): allowed while this window is visible, which then fades out over AnkiDroid's
+ * moment in front. Used on the main thread; [request],
  * [onScreenOff] and [onForegroundChanged] may be called from any thread.
  */
 object CardOverlay {
@@ -55,7 +57,7 @@ object CardOverlay {
     /** The screen went off: what was shown is no longer seen. */
     fun onScreenOff(context: Context) {
         val appContext = context.applicationContext
-        main.post { dismiss(appContext) }
+        main.post { dismiss(appContext, closedByUser = false) }
     }
 
     /** [app] came to the front: a gate in front of another app goes away (the user left it). */
@@ -66,7 +68,7 @@ object CardOverlay {
                 app != appContext.packageName && app !in GateRules.TRANSIENT_PACKAGES
             ) {
                 FocusLog.i(appContext, "gate closed: left for $app")
-                dismiss(appContext)
+                dismiss(appContext, closedByUser = false)
             }
         }
     }
@@ -80,7 +82,7 @@ object CardOverlay {
             if (mode == shownMode && app == shownApp) return
             // A gate isn't replaced by a nudge: it asks for cards already.
             if (shownMode == FocusCardController.Mode.GATE && mode != FocusCardController.Mode.GATE) return
-            dismiss(context)
+            dismiss(context, closedByUser = false)
         }
         val themed = ContextThemeWrapper(context, R.style.Theme_AnkiNotifications)
         val content = LayoutInflater.from(themed).inflate(R.layout.focus_review, null)
@@ -136,7 +138,11 @@ object CardOverlay {
         card.start(mode, app)
     }
 
-    private fun dismiss(context: Context) {
+    /**
+     * Closes the overlay. [closedByUser]: the card screen is done (answered, snoozed, left), the window still
+     * visible: the moment to ask AnkiDroid to sync, if answers wait.
+     */
+    private fun dismiss(context: Context, closedByUser: Boolean = true) {
         val shown = window ?: return
         val wasGate = shownMode == FocusCardController.Mode.GATE
         controller?.stop()
@@ -145,15 +151,32 @@ object CardOverlay {
         isShowing = false
         shownMode = null
         shownApp = null
-        try {
-            windowManager(context).removeViewImmediate(shown)
-        } catch (e: Exception) {
-            // Already removed.
+        val syncing = closedByUser && AnkiSync.isDue(context) && AnkiSync.request(context, "after cards")
+        if (syncing) {
+            // AnkiDroid shows its deck list for a moment: this window stays over it, then fades out.
+            shown.isEnabled = false
+            shown.animate().setStartDelay(SYNC_HOLD_MS).setDuration(SYNC_FADE_MS).alpha(0f)
+                .withEndAction { remove(context, shown) }
+                .start()
+        } else {
+            remove(context, shown)
         }
         abandonAudioFocus(context)
         // Closed without its cards, with the gated app maybe still in front: the monitor looks at it again.
         if (wasGate) UsageMonitorService.requestRecheck()
     }
+
+    private fun remove(context: Context, view: View) {
+        try {
+            windowManager(context).removeViewImmediate(view)
+        } catch (e: Exception) {
+            // Already removed.
+        }
+    }
+
+    /** How long the overlay stays over AnkiDroid's moment in front after a sync request, then fades. */
+    private const val SYNC_HOLD_MS = 1_500L
+    private const val SYNC_FADE_MS = 300L
 
     private fun windowManager(context: Context) = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 

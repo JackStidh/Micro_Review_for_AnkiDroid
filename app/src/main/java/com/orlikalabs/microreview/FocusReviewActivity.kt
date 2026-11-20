@@ -19,7 +19,11 @@ class FocusReviewActivity : ComponentActivity() {
     private var started = false
 
     private val host = object : FocusCardController.Host {
-        override fun close() = finish()
+        override fun close() {
+            // In front: allowed to ask AnkiDroid to sync the answers (AnkiSync).
+            if (AnkiSync.isDue(this@FocusReviewActivity)) AnkiSync.request(this@FocusReviewActivity, "after cards")
+            finish()
+        }
 
         override fun leaveApp() {
             startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

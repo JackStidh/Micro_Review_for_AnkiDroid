@@ -65,6 +65,8 @@ object CardReview {
             } else {
                 Log.i(TAG, "time taken: $timeTaken ms")
                 anki.reviewCard(localState.noteID, localState.cardOrd, ease, timeTaken)
+                // On the phone only until AnkiDroid syncs: asked for at the next chance (AnkiSync).
+                AnkiSync.onChanged(context)
             }
 
             // Answered from a nudge: the next card waits for its own nudge, and "Keep going" is offered meanwhile.
@@ -135,6 +137,7 @@ object CardReview {
         }
         Log.i(TAG, "burying note ${localState.noteID}, ord ${localState.cardOrd}")
         anki.buryCard(localState.noteID, localState.cardOrd)
+        AnkiSync.onChanged(context)
         ReviewTimer.clear(context)
         CardStateController.showNextCard(context, silent = true)
         true

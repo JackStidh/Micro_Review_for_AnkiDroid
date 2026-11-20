@@ -20,6 +20,7 @@ checked on a real build and a real phone.
 | **Bury** (until tomorrow, AnkiDroid's `buried` column of `ReviewInfo`); not an answer, doesn't count for the gate. | `CardReview.bury`, `AnkiDataSource.buryCard` |
 | **Next intervals** on Pass and Fail ("Pass · 4d"), from AnkiDroid's `next_review_times`, now kept with the stored card. | `AnswerButtons.nextReviewText`, `StoredState.nextReviewTimes` |
 | **Pause while the PC is in use**: paired with Micro Review Desktop (`desktop/`), cards and the gate pause until 5 minutes after the PC's last input, read from an ntfy.sh topic just before a card or a gate. | `PcActivity`, `PcPairing` |
+| **AnkiDroid sync**: answers given here stayed on the phone until AnkiDroid was opened (it only syncs then). After answers, as the card overlay closes (or from the settings), AnkiDroid's `DO_SYNC` request is sent, at most every 15 min and only online; the overlay fades out over AnkiDroid's moment in front, and that moment doesn't end a gate pass. | `AnkiSync`, `AnkiSyncRules` |
 | **Settings screen** with a checklist of what still has to be allowed. Bell icon on the main screen. | `FocusSettingsActivity` |
 
 ## How it fits the existing app

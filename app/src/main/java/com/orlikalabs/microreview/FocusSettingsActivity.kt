@@ -85,6 +85,7 @@ class FocusSettingsActivity : Activity() {
         gateSection()
         pauseSection()
         pcSection()
+        ankiWebSection()
         diagnosticsSection()
     }
 
@@ -349,6 +350,22 @@ class FocusSettingsActivity : Activity() {
         }
     }
 
+    // AnkiWeb
+
+    /** The answers given here reach AnkiWeb when AnkiDroid syncs: asked after the cards, or now ([AnkiSync]). */
+    private fun ankiWebSection() {
+        header(getString(R.string.focus_ankiweb))
+        val asked = AnkiSync.requestedAt(this)
+        val summary = getString(
+            if (AnkiSync.isPending(this)) R.string.focus_ankiweb_pending else R.string.focus_ankiweb_synced,
+            if (asked == 0L) getString(R.string.focus_ankiweb_never) else UsageMonitorService.formatTime(this, asked),
+        )
+        action(getString(R.string.focus_ankiweb_sync), summary, getString(R.string.focus_ankiweb_sync_now)) {
+            AnkiSync.request(this, "from the settings")
+            content.postDelayed({ if (!isFinishing) rebuild() }, 1_000)
+        }
+    }
+
     // The PC
 
     /** Pairing with Micro Review Desktop, the Anki add-on: the phone pauses while the PC is in use ([PcActivity]). */
@@ -446,6 +463,8 @@ class FocusSettingsActivity : Activity() {
             } ?: "not paired"),
             "Card style: ${FocusSettings.nudgeStyle(this).name.lowercase()}, default every ${FocusSettings.defaultIntervalMinutes(this)} min, per app: ${FocusSettings.appIntervals(this)}",
             "Gated: ${FocusSettings.gatedApps(this)}, pass: ${FocusSettings.gatePass(this) ?: "none"}",
+            "AnkiDroid sync: answers waiting ${yes(AnkiSync.isPending(this))}, last asked " +
+                (AnkiSync.requestedAt(this).takeIf { it != 0L }?.let { UsageMonitorService.formatTime(this, it) } ?: "never"),
             "",
             "Recent events:",
         )
