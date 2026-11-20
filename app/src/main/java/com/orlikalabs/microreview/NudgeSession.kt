@@ -6,8 +6,8 @@ import android.util.Log
 
 /**
  * A nudge: the current card offered while the phone is in use, when [UsageMonitorService] says one is due. By
- * default it takes the screen, over the app in use ([CardOverlay]). Otherwise, or without "Display over other apps",
- * it is a pop-up notification, only posted for the length of the nudge ([isActive]): never on the lock screen,
+ * default it takes the screen, over the app in use ([CardOverlay]). Without "Display over other apps", it is a
+ * pop-up notification, only posted for the length of the nudge ([isActive]): never on the lock screen,
  * and withdrawn when it is no longer looked at (screen off, ignored, swiped), so the time recorded with an answer is
  * time actually spent on the card.
  *
@@ -52,7 +52,7 @@ object NudgeSession {
             FocusLog.i(context, "card due, but nothing to review")
             return false
         }
-        if (FocusSettings.nudgeStyle(context) == FocusSettings.NudgeStyle.FULL_SCREEN && FocusState.canOpenOverApps(context)) {
+        if (FocusState.canOpenOverApps(context)) {
             CardOverlay.request(context, FocusCardController.Mode.NUDGE)
             return true
         }

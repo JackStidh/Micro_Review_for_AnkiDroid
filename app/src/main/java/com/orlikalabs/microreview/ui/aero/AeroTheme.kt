@@ -128,7 +128,7 @@ object AeroThemes {
     val TORII = AeroPalette(
         id = "torii",
         kanji = "鳥居",
-        reading = "せんごく",
+        reading = "とりい",
         name = "Torii Sengoku",
         motto = "Lacquer, vermilion and gold",
         isDark = true,

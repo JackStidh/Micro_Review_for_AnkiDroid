@@ -15,10 +15,8 @@ object FocusSettings {
 
     private const val KEY_NUDGES = "nudges_enabled"
     /** "_2": the full-screen card became the default, whatever was chosen before. */
-    private const val KEY_NUDGE_STYLE = "nudge_style_2"
     private const val KEY_DEFAULT_INTERVAL = "default_interval_minutes"
     private const val KEY_APP_INTERVALS = "app_intervals"
-    private const val KEY_NUDGE_LIFETIME = "nudge_lifetime_seconds"
     private const val KEY_PASS_FAIL = "pass_fail_only"
     private const val KEY_NOTE_FIELDS = "show_note_fields"
     private const val KEY_PAUSE_BLUETOOTH = "pause_on_bluetooth"
@@ -45,34 +43,16 @@ object FocusSettings {
     private const val KEY_THEME = "theme"
 
     const val DEFAULT_INTERVAL_MINUTES = 20
-    const val DEFAULT_NUDGE_LIFETIME_SECONDS = 30
+    /** How long an untouched card notification stays before it is withdrawn, so its time doesn't count. */
+    const val NUDGE_LIFETIME_SECONDS = 30
     const val DEFAULT_SNOOZE_MINUTES = 30
     const val DEFAULT_MORNING_MINUTE = 7 * 60
-
-    /** How a nudge shows its card. */
-    enum class NudgeStyle {
-        /** A pop-up notification: Show answer, then Pass or Fail; tapping it opens the full card. */
-        NOTIFICATION,
-
-        /**
-         * The card takes the whole screen, over the app in use ([CardOverlay], needs "Display over other apps"): it
-         * can't be overlooked, and the time is exact. The default.
-         */
-        FULL_SCREEN,
-    }
 
     // Nudges
 
     fun nudgesEnabled(context: Context): Boolean = prefs(context).getBoolean(KEY_NUDGES, false)
 
     fun setNudgesEnabled(context: Context, enabled: Boolean) = prefs(context).edit().putBoolean(KEY_NUDGES, enabled).apply()
-
-    fun nudgeStyle(context: Context): NudgeStyle =
-        prefs(context).getString(KEY_NUDGE_STYLE, null)
-            ?.let { name -> NudgeStyle.entries.firstOrNull { it.name == name } }
-            ?: NudgeStyle.FULL_SCREEN
-
-    fun setNudgeStyle(context: Context, style: NudgeStyle) = prefs(context).edit().putString(KEY_NUDGE_STYLE, style.name).apply()
 
     /** Minutes of phone use between two cards, for apps without their own interval; [NudgeClock.NEVER] for none. */
     fun defaultIntervalMinutes(context: Context): Int =
@@ -100,11 +80,6 @@ object FocusSettings {
         prefs(context).edit().putString(KEY_APP_INTERVALS, json.toString()).apply()
     }
 
-    /** How long an untouched card notification stays before it is withdrawn, so its time doesn't count. */
-    fun nudgeLifetimeSeconds(context: Context): Int =
-        prefs(context).getInt(KEY_NUDGE_LIFETIME, DEFAULT_NUDGE_LIFETIME_SECONDS).coerceIn(10, 300)
-
-    fun setNudgeLifetimeSeconds(context: Context, seconds: Int) = prefs(context).edit().putInt(KEY_NUDGE_LIFETIME, seconds).apply()
 
     /** "Pass / Fail only": Again and Good, relabeled; Hard and Easy are never offered. */
     fun passFailOnly(context: Context): Boolean = prefs(context).getBoolean(KEY_PASS_FAIL, true)

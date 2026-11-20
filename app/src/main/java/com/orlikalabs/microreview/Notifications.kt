@@ -205,7 +205,7 @@ class Notifications {
                 context.getString(R.string.nudge_snooze_action, FocusSettings.snoozeMinutes(context)),
                 createIntent(context, NudgeSession.ACTION_SNOOZE),
             )
-            builder.setTimeoutAfter(FocusSettings.nudgeLifetimeSeconds(context) * 1000L)
+            builder.setTimeoutAfter(FocusSettings.NUDGE_LIFETIME_SECONDS * 1000L)
         } else {
             collapsedView.setTextViewText(R.id.textViewCollapsedTitle, CardText.clean(card.q))
             collapsedView.setTextViewText(R.id.textViewCollapsedHeader, CardText.clean(card.a))

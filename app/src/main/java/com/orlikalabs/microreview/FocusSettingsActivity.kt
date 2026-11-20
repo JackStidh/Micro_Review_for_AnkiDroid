@@ -92,8 +92,7 @@ class FocusSettingsActivity : ComponentActivity(), SettingsActions {
 
     private fun read(): SettingsState {
         val monitorWanted = FocusSettings.monitorWanted(this)
-        val needsOverlay = FocusSettings.gateEnabled(this) ||
-            (FocusSettings.nudgesEnabled(this) && FocusSettings.nudgeStyle(this) == FocusSettings.NudgeStyle.FULL_SCREEN)
+        val needsOverlay = FocusSettings.gateEnabled(this) || FocusSettings.nudgesEnabled(this)
         val now = System.currentTimeMillis()
         val until = FocusSettings.snoozeUntil(this)
         val asked = AnkiSync.requestedAt(this)
@@ -306,7 +305,7 @@ class FocusSettingsActivity : ComponentActivity(), SettingsActions {
                 val inUse = if (until > System.currentTimeMillis()) "in use until ${UsageMonitorService.formatTime(this, until)}" else "not in use"
                 "paired, $inUse" + (PcActivity.lastError?.let { error -> ", last read failed: $error" } ?: "")
             } ?: "not paired"),
-            "Card style: ${FocusSettings.nudgeStyle(this).name.lowercase()}, default every ${FocusSettings.defaultIntervalMinutes(this)} min, per app: ${FocusSettings.appIntervals(this)}",
+            "Default every ${FocusSettings.defaultIntervalMinutes(this)} min, per app: ${FocusSettings.appIntervals(this)}",
             "Gated: ${FocusSettings.gatedApps(this)}, pass: ${FocusSettings.gatePass(this) ?: "none"}",
             "AnkiDroid sync: answers waiting ${yes(AnkiSync.isPending(this))}, last asked " +
                 (AnkiSync.requestedAt(this).takeIf { it != 0L }?.let { UsageMonitorService.formatTime(this, it) } ?: "never") +

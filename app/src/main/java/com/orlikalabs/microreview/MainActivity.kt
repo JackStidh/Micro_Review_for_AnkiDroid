@@ -256,8 +256,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun readNeeds(): List<SetupNeed> = buildList {
-        val needsOverlay = FocusSettings.gateEnabled(this@MainActivity) ||
-            (FocusSettings.nudgesEnabled(this@MainActivity) && FocusSettings.nudgeStyle(this@MainActivity) == FocusSettings.NudgeStyle.FULL_SCREEN)
+        val needsOverlay = FocusSettings.gateEnabled(this@MainActivity) || FocusSettings.nudgesEnabled(this@MainActivity)
         if (FocusSettings.monitorWanted(this@MainActivity) && !FocusState.hasUsageAccess(this@MainActivity)) add(SetupNeed.USAGE_ACCESS)
         if (needsOverlay && !FocusState.canOpenOverApps(this@MainActivity)) add(SetupNeed.OVERLAY)
         if (!NotificationManagerCompat.from(this@MainActivity).areNotificationsEnabled()) add(SetupNeed.NOTIFICATIONS)

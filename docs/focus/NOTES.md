@@ -7,61 +7,76 @@ checked on a real build and a real phone.
 
 | Feature | Where |
 |---|---|
-| **Pass / Fail only**: Fail records Again, Pass records Good; Hard and Easy are never offered (notification, widget, review screens). On by default. | `AnswerButtons.shownButtons`, `AnswerLabels`, `FocusSettings.passFailOnly` |
+| **Pass / Fail only**: Fail records Again, Pass records Good; Hard and Easy are never offered (card screen, pop-up notification). On by default. | `AnswerButtons.shownButtons`, `AnswerLabels`, `FocusSettings.passFailOnly` |
 | **Nudges**: a card pops up every N minutes of phone use, only while the screen is on and unlocked, never on the lock screen. An interval per app (time spent in that app), a default for the rest, "never" for apps that must not be interrupted. | `UsageMonitorService`, `NudgeClock`, `NudgeSession` |
 | **One card, or keep going**: after the answer the notification offers "Keep going" for 8 seconds; it opens the full-screen review for as many cards as wanted. | `Notifications.showKeepGoingPrompt`, `FocusReviewActivity` (SESSION) |
-| **Honest timing**: the timer starts when the card is posted on an unlocked screen. An untouched card is withdrawn after 30 s (setting), at screen off or when swiped, and its time is dropped. The full-screen style is exact. | `NudgeSession.withdraw`, `ReviewTimer` |
+| **Honest timing**: the timer starts when the card is posted on an unlocked screen. An untouched pop-up card is withdrawn after 30 s, at screen off or when swiped, and its time is dropped. The full-screen card is exact. | `NudgeSession.withdraw`, `ReviewTimer` |
 | **App gate**: opening a chosen app first asks for 5 cards (setting). Each answer counts. The pass lasts until another app is opened: no grace period. Nothing due: no gate. One emergency skip per day (setting). Back or Leave goes to the home screen. | `GateRules`, `UsageMonitorService.onForegroundChanged`, `FocusReviewActivity` (GATE) |
 | **Snooze**: 30 min / 2 h / until tomorrow on the monitor's notification, "Snooze" on each card, more in the settings. A snooze doesn't open the gate unless chosen. | `FocusActions`, `QuietTime`, `FocusState` |
 | **Quiet hours**: daily windows without cards. | `QuietTime`, `FocusSettings.quietHours` |
-| **Bluetooth pause**: no cards, an open gate and no scheduled reviews while a Bluetooth device is connected (car, headphones). Audio devices need no permission; every device needs "Nearby devices". Replaces the earlier driving detection (Android Auto, car mode, phone motion), removed after a false "driving" at home. | `BluetoothState`, `BluetoothWatcher` |
-| **Also held back** during Do Not Disturb and calls. Scheduled reviews ("at set times") respect all of the above too. | `FocusState.pauseReason`, `Interruptions` |
+| **Bluetooth pause**: no cards and an open gate while a Bluetooth device is connected (car, headphones). Audio devices need no permission; every device needs "Nearby devices". Replaces the earlier driving detection (Android Auto, car mode, phone motion), removed after a false "driving" at home. | `BluetoothState`, `BluetoothWatcher` |
+| **Also held back** during Do Not Disturb and calls. | `FocusState.pauseReason`, `Interruptions` |
 | **1-second lock**: a card's buttons don't work for a second after it appears (dimmed), so a tap meant for the keyboard doesn't answer it. Not on the pop-up notification style (its buttons can't be delayed). | `FocusCardController.lockedUntil` |
 | **Bury** (until tomorrow, AnkiDroid's `buried` column of `ReviewInfo`); not an answer, doesn't count for the gate. | `CardReview.bury`, `AnkiDataSource.buryCard` |
 | **Next intervals** on Pass and Fail ("Pass · 4d"), from AnkiDroid's `next_review_times`, now kept with the stored card. | `AnswerButtons.nextReviewText`, `StoredState.nextReviewTimes` |
 | **Pause while the PC is in use**: paired with Micro Review Desktop (`desktop/`), cards and the gate pause until 5 minutes after the PC's last input, read from an ntfy.sh topic just before a card or a gate. | `PcActivity`, `PcPairing` |
 | **AnkiDroid sync**: answers given here stayed on the phone until AnkiDroid was opened (it only syncs then). The phone and the PC both review, so neither may show a card the other already reviewed: the phone syncs as each card overlay closes with answers given (AnkiDroid ignores requests less than 2 min apart: answers left over go at the next check), and, while in use with no card open, when Micro Review Desktop says on the relay that it synced its answers (`mrf-<code>-sync`, read right after unlocking and at most every 2 min), under a short "Syncing" cover; only online; or "Sync now" in the settings. AnkiDroid's `DO_SYNC` request is sent; the overlay fades out over AnkiDroid's moment in front, and that moment doesn't end a gate pass. Not covered: a gated app opened right at unlock shows its cards before that sync. | `AnkiSync`, `AnkiSyncRules`, `PcActivity.refreshPcSync` |
-| **Settings screen** with a checklist of what still has to be allowed. Bell icon on the main screen. | `FocusSettingsActivity` |
+| **Settings screen** with a checklist of what still has to be allowed. Gear orb on the home screen. | `FocusSettingsActivity`, `ui/SettingsScreen.kt` |
+| **Aero look**: four themes (see below), chosen on the home screen or in Settings. | `ui/aero/` |
 
 ## How it fits the existing app
 
-- With nudges on, `LockSession.mayPostNow()` only allows the card notification for the length of a nudge
-  (`NudgeSession.isActive`). Everything that posts goes through it, so the notification is otherwise "hidden"
-  exactly as it is while unlocked with the wallpaper. Turning nudges off clears the hidden flag and the next sync
-  posts the usual notification again.
-- A nudge's notification uses its own high-importance channel (`nudge_review`, secret on the lock screen), isn't
-  ongoing, and carries standard actions (Show answer, Snooze; then Fail, Pass) because those, unlike the custom
-  view's buttons, show in the pop-up.
+- The card is only shown by the nudges and the gate. By default a nudge takes the screen over the app in use
+  (`CardOverlay`, a Compose window); without "Display over other apps" it is a pop-up notification, posted only
+  for the length of the nudge (`NudgeSession.isActive`, checked by `CardStateController.post`), never on the lock
+  screen. A sync never posts the notification again.
+- The pop-up uses its own high-importance channel (`nudge_review`, secret on the lock screen), isn't ongoing, and
+  carries standard actions (Show answer, Snooze; then Fail, Pass) because those, unlike the custom view's buttons,
+  show in the pop-up.
 - `CardReview.answer()` from a nudge marks the session answered before `showNextCard()`, so the next card is stored
   but not posted; `CardStateController.cancelNotification()` leaves the answered card in place for the prompt.
-- The gate and the full-screen review answer with `countsForSession = false`, like the widget.
 - The monitor is a foreground service (`specialUse`) that polls the usage events once a second while the phone is
   in use, and does nothing while the screen is off. Opening the gate from it relies on "Display over other apps".
-- `FocusReviewActivity` and `FocusSettingsActivity` are plain activities with views, not Compose (see below).
 - The build has its own application ID (`com.orlikalabs.microreview.focus`) and a debug key kept in the repository
   (`focus-debug.keystore`), so CI builds install over each other and next to the upstream app. Uninstall or stop
   the upstream app: two apps showing the same cards make no sense.
 
-## What is checked, and how
+## Removed on this branch
 
-No Android SDK was available where this was written (Google's Maven repository was unreachable), so no Gradle build
-has run yet. Instead:
+The upstream lock screen features did nothing with nudges and the gate, so the Aero redesign took them out: the
+card notification on the lock screen and `LockSession` (one review per unlock, cards per unlock), the live
+wallpaper (`CardWallpaperService`) and the lock screen picture, "Open after unlock" (`ReviewActivity`), card
+rotation, reviews at set times (`ScheduledReview`), the home screen widget, the card style editor
+(`WallpaperStyle`, `CardRenderer`, `PictureFilter`), the old Compose main screen, and the nudge style and nudge
+lifetime settings (the full-screen card whenever it is allowed; a pop-up withdrawn after 30 s otherwise). Their
+tests, the scenario device tests, `StoreAssetsSetup`, `scripts/store-assets.ps1` and the JitPack test dependency
+went with them. `Notifications.removeOldChannels` deletes the channels they used.
 
-- **Unit tests**: the whole JVM suite except `DeckTreeTest` (it needs a Compose file) was compiled with the same
-  Kotlin version (2.3.20) and run: 172 tests pass, including the new `QuietTimeTest`, `NudgeClockTest`,
-  `GateRulesTest`, `InterruptionsTest` and the Pass / Fail cases of `AnswerButtonsTest`.
-- **Type check**: every non-Compose source, old and new, compiles against the real `android.jar` (API 36), with
-  hand-written stand-ins for the few AndroidX classes they use. That covers all the new code.
-- **Resources**: every `R.*` reference in every source exists; every XML file parses.
+## The Aero look
 
-Not checked until CI runs:
+Glass and gel in the style of a Japanese phone app around 2008: every screen is Compose, in `ui/`.
 
-- The three small edits in Compose files (`MainScreen.kt`: bell icon and `onOpenFocus`; `ReviewActivity.kt`:
-  Pass / Fail labels; `MainActivity.kt`).
-- The manifest merge, lint (`lintDebug` runs as a separate
-  job so it can't hold the APK back).
-- The device tests (`androidTest`): they still expect Again / Hard / Good / Easy. Either turn "Pass / Fail only"
-  off in their setup or default it to off before proposing anything upstream.
+| Theme | Kanji | Scene | Particles | Headings |
+|---|---|---|---|---|
+| Sakura (default) | 桜 | Spring sky, glossy water, a blossoming branch | Petals, lens flare | Sans |
+| Yoru | 夜 | Crescent moon, glass towers with lit windows, a lake | Aurora, stars, a shooting star, fireflies | Sans |
+| Mochi | 餅 | Sun, clouds, glossy green hills, dango | Bubbles, sparkles | Sans |
+| Torii Sengoku | 鳥居 | Red sun, ink mountains, a stone path, a torii | Embers, gold leaf | Serif |
+
+| File | Role |
+|---|---|
+| `ui/aero/AeroTheme.kt` | `AeroPalette` (colors, scene, particles, heading font), `AeroThemes` (the four, the stored choice: `FocusSettings.themeName`), `AeroTheme` (MaterialTheme from the palette), `LocalAero`, `LocalAeroMotion` (off with animations off in Developer options). |
+| `ui/aero/AeroBackground.kt` | The scene behind every screen: the still part drawn once into a bitmap (`drawWithCache`), the live part each frame. Particles come from a fixed hash, not a random generator, so a frame only depends on the time. |
+| `ui/aero/AeroComponents.kt` | `GlassPanel`, `GelButton` (with `charge`: not clickable until full, used by the 1-second lock), `Orb`, `AeroSwitch`, `AeroCheck`, `Beads` (gate progress), `Seal` (a red hanko in Torii), `SectionTitle`, `Pill`, `AeroDialog`, `ChoiceDialog`, `AeroText`. |
+| `ui/aero/ThemePicker.kt` | The four tiles, each a still preview of its scene. |
+| `ui/aero/OverlayComposeOwner.kt` | Lifecycle, saved state and view model owners for a `ComposeView` in a `WindowManager` window (the card overlay), which has no activity to provide them. |
+| `ui/HomeScreen.kt` | Status orb (minutes to the next card, or why cards are held back), Card now / Snooze or Resume / Sync now, what still has to be allowed, the next card, the review order, the deck tree, the theme picker. |
+| `ui/SettingsScreen.kt` | Settings in glass sections, with `SettingsActions` implemented by `FocusSettingsActivity`. |
+| `ui/CardScreen.kt` | The card, for the gate, a nudge and a session (`FocusCardController.Ui`): question, Show answer, ✕ △ ◯ ◎ answer gels with the next intervals, bury, snooze, "記録" after an answer, "お疲れ様！" when nothing is left; also the sync cover. Used by `CardOverlay` and `FocusReviewActivity`. |
+
+The kanji are decoration (`translatable="false"` in `strings.xml`); every text a user reads is English beside
+them. Screenshots of every theme: push to `redesign` (or run "Design preview" on a branch): `DesignPreviewTest`
+takes them on an emulator and `design-preview.yml` puts them on the `design-shots` branch.
 
 ## To check on the phone
 
