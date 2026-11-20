@@ -6,14 +6,12 @@ import android.content.SharedPreferences
 import java.io.File
 
 /**
- * Saves the app's data (current card, deck selection, lock session, settings) before a test and restores it
- * after, so the device tests don't change the state of a phone in daily use. The card notification is
- * posted again if it was there before.
+ * Saves the app's data (current card, deck selection, settings) before a test and restores it after, so the device
+ * tests don't change the state of a phone in daily use.
  */
 class AppDataSnapshot private constructor(
     private val context: Context,
     private val prefs: Map<String, Map<String, *>>,
-    private val notificationWasPosted: Boolean,
 ) {
     fun restore() {
         // Files created by the test are emptied; the others get their saved values back.
@@ -22,26 +20,18 @@ class AppDataSnapshot private constructor(
             prefs[name].orEmpty().forEach { (key, value) -> editor.putAny(key, value) }
             editor.commit()
         }
-        val manager = notificationManager(context)
-        manager.cancel(Notifications.NOTIFICATION_ID)
-        if (notificationWasPosted) {
-            val state = AnkiDroidHelper(context).storedState
-            if (state != null) {
-                Notifications.create().showNotification(context, state.takeIf { it.hasCard() }?.toCardInfo(), state.deckName, true)
-            }
-        }
+        notificationManager(context).cancel(Notifications.NOTIFICATION_ID)
     }
 
     companion object {
         /** The app's own preference files; system libraries (WorkManager...) are left alone. */
-        private val PREFIXES = listOf("com.ankidroid.companion.", "com.ichi2.anki.api.")
+        private val PREFIXES = listOf("com.ankidroid.companion.", "com.ichi2.anki.api.", "com.orlikalabs.microreview.")
 
         fun take(context: Context): AppDataSnapshot {
             val prefs = prefsNames(context).associateWith { name ->
                 context.getSharedPreferences(name, Context.MODE_PRIVATE).all.toMap()
             }
-            val posted = notificationManager(context).activeNotifications.any { it.id == Notifications.NOTIFICATION_ID }
-            return AppDataSnapshot(context, prefs, posted)
+            return AppDataSnapshot(context, prefs)
         }
 
         private fun prefsNames(context: Context): List<String> =

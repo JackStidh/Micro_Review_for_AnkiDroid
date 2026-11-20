@@ -184,30 +184,6 @@ public class AnkiDroidHelper {
                 });
     }
 
-    /**
-     * The rotation set of "Change the card at every unlock": the first {@code size} displayable due cards of the
-     * decks, in order ({@link CardRotation#collect}).
-     *
-     * @throws AnkiQueryException if AnkiDroid can't be read
-     */
-    public List<CardInfo> queryRotation(List<Long> deckIds, int size) {
-        Map<Long, int[]> counts = getDeckCounts();
-        return CardRotation.collect(
-                deckIds,
-                size,
-                deckId -> dueCount(counts, deckId),
-                (deckId, scanLimit) -> {
-                    List<CardInfo> cards = queryDisplayableCards(deckId, scanLimit);
-                    String deckName = cards.isEmpty() ? null : mSource.deckName(deckId);
-                    for (CardInfo card : cards) {
-                        card.deckId = deckId;
-                        card.deckName = deckName == null ? "" : deckName;
-                    }
-                    return cards;
-                },
-                card -> new CardSync.CardKey(card.noteID, card.cardOrd));
-    }
-
     private static Integer dueCount(Map<Long, int[]> counts, long deckId) {
         int[] deckCounts = counts.get(deckId);
         return deckCounts == null ? null : deckCounts[0] + deckCounts[1] + deckCounts[2];

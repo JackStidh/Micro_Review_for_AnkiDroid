@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- The launcher icon's sky, in the Sakura theme: Aero blue to blossom pink, a sun, a white swoosh. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
@@ -7,14 +8,27 @@
     android:viewportHeight="108">
     <path android:pathData="M0,0 H108 V108 H0 Z">
         <aapt:attr name="android:fillColor">
-            <gradient
-                android:type="linear"
-                android:startX="0"
-                android:startY="0"
-                android:endX="108"
-                android:endY="108">
-                <item android:offset="0" android:color="#FF1E3A8A" />
-                <item android:offset="1" android:color="#FF0E9F9A" />
+            <gradient android:type="linear" android:startX="0" android:startY="0" android:endX="0" android:endY="108">
+                <item android:offset="0" android:color="#FF1D9BEA" />
+                <item android:offset="0.55" android:color="#FF9EE0FF" />
+                <item android:offset="1" android:color="#FFFFD6E6" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M0,0 H108 V108 H0 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="18" android:centerY="14" android:gradientRadius="60">
+                <item android:offset="0" android:color="#E6FFFFFF" />
+                <item android:offset="1" android:color="#00FFFFFF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M-4,78 C30,62 62,92 112,70 L112,80 C62,100 30,72 -4,88 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="0" android:startY="0" android:endX="108" android:endY="0">
+                <item android:offset="0" android:color="#00FFFFFF" />
+                <item android:offset="0.5" android:color="#B3FFFFFF" />
+                <item android:offset="1" android:color="#00FFFFFF" />
             </gradient>
         </aapt:attr>
     </path>

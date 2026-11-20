@@ -15,10 +15,12 @@ import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 
 
+/**
+ * The card as a notification: only a nudge's, when the card can't take the screen ("Display over other apps" not
+ * allowed, or the take-over turned off). Never on the lock screen.
+ */
 class Notifications {
     companion object Factory {
-        /** Shown in full on the lock screen, so a card can be answered without unlocking. */
-        const val CHANNEL_ID = "lockscreen_review"
         const val NOTIFICATION_ID = 1
 
         /** The cards offered while the phone is in use ([NudgeSession]): they pop up, and never show on the lock screen. */
@@ -30,17 +32,14 @@ class Notifications {
         /** Once its answer is shown, a nudge's card is being looked at: it only goes away if forgotten. */
         private const val REVEALED_NUDGE_TIMEOUT_MS = 10 * 60_000L
 
-        /** The scheduled reviews ([ScheduledReview]). */
-        const val SCHEDULED_CHANNEL_ID = "scheduled_review"
+        /** Channels of features that are gone (the lock screen card, the scheduled reviews): removed at start. */
+        private val OLD_CHANNEL_IDS = listOf("lockscreen_review", "scheduled_review", "channel_id")
         const val ACTION_SHOW_ANSWER = "ACTION_SHOW_ANSWER"
         const val ACTION_PREVIOUS_PAGE = "ACTION_PREVIOUS_PAGE"
         const val ACTION_NEXT_PAGE = "ACTION_NEXT_PAGE"
 
         /** The answer buttons: followed by the button number, 1 to 4 ([AnswerButtons]), with the card ([CardReview.forCard]). */
         const val ACTION_BUTTON_PREFIX = "ACTION_BUTTON_"
-
-        /** How long "Next card at your next unlock" stays before disappearing. */
-        private const val NEXT_CARD_MESSAGE_TIMEOUT_MS = 5_000L
 
         /** The height left for the card's text in the expanded view, whose maximum is 256 dp, and what it contains. */
         private const val TEXT_ROOM_DP = 120f
@@ -60,7 +59,6 @@ class Notifications {
          */
         private const val MAX_PANEL_WIDTH_DP = 560
         private const val TEXT_WIDTH_MARGIN = 0.95f
-        private const val LEGACY_CHANNEL_ID = "channel_id"
 
         /** The pages of [card], its answer included if [revealed], at the current screen width and font size. */
         fun cardPages(context: Context, card: CardInfo, revealed: Boolean): List<CardPages.Page> {
@@ -112,20 +110,10 @@ class Notifications {
 
         fun create(): Notifications = Notifications()
 
-        /** Creates the notification channel. Safe to call repeatedly. */
-        fun createChannel(context: Context) {
+        /** Removes the channels of the features that are gone. Safe to call repeatedly. */
+        fun removeOldChannels(context: Context) {
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                context.getString(R.string.notification_channel_name),
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = context.getString(R.string.notification_channel_description)
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            }
-            notificationManager.createNotificationChannel(channel)
-            // The lock screen visibility of an existing channel can't be changed: replace the old channel.
-            notificationManager.deleteNotificationChannel(LEGACY_CHANNEL_ID)
+            OLD_CHANNEL_IDS.forEach { notificationManager.deleteNotificationChannel(it) }
         }
 
         /** The channel of the nudges: high importance, so the card pops up over the app in use. */
@@ -142,87 +130,43 @@ class Notifications {
             notificationManager.createNotificationChannel(channel)
         }
 
-        /** The channel of the scheduled reviews: high importance, so it pops up at the chosen times. */
-        fun createScheduledChannel(context: Context) {
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val channel = NotificationChannel(
-                SCHEDULED_CHANNEL_ID,
-                context.getString(R.string.scheduled_channel_name),
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = context.getString(R.string.scheduled_channel_description)
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            }
-            notificationManager.createNotificationChannel(channel)
-        }
     }
 
     /**
-     * Posts the card notification, or the "Bravo" notification when [card] is null. The answer and the answer
-     * buttons are only shown once "Show answer" was tapped ([CardReview.isAnswerRevealed]), or right away when the
-     * lock screen wallpaper already shows the answer ([CardReview.isAnswerOnWallpaper]).
+     * Posts a nudge's card ([NudgeSession]): it pops up over the app in use, never on the lock screen, and can be
+     * swiped away. The answer and the answer buttons are only shown once "Show answer" was tapped
+     * ([CardReview.isAnswerRevealed]).
      *
      * @param replace whether to remove the current notification first, which also closes its expanded view.
      * Pass false to update it in place (e.g. to reveal the answer).
      */
-    fun showNotification(context: Context, card: CardInfo?, deckName: String, isSilent: Boolean, replace: Boolean = true) {
+    fun showNotification(context: Context, card: CardInfo, deckName: String, isSilent: Boolean, replace: Boolean = true) {
         Log.i("Notifications", "showNotification called")
-        createChannel(context)
-        val builder: NotificationCompat.Builder
+        createNudgeChannel(context)
         val collapsedView = RemoteViews(context.packageName, R.layout.notification_collapsed)
+        val title = context.getString(R.string.notification_title_deck, deckName)
+        val revealed = CardReview.isAnswerRevealed(context, card)
+        collapsedView.setTextViewText(R.id.textViewCollapsedHeader, CardText.clean(card.q))
+        collapsedView.setTextViewText(R.id.textViewCollapsedTitle, title)
 
-        // There is a card to show, show a notification with the expanded view.
-        if (card != null) {
-            LockSession.onNotificationPosted(context)
-            val title = context.getString(R.string.notification_title_deck, deckName)
-            val revealed = CardReview.isAnswerRevealed(context, card) || CardReview.isAnswerOnWallpaper(context)
-            collapsedView.setTextViewText(R.id.textViewCollapsedHeader, CardText.clean(card.q))
-            collapsedView.setTextViewText(R.id.textViewCollapsedTitle, title)
+        val expandedView = cardView(context, card, revealed, PageActions(ACTION_PREVIOUS_PAGE, ACTION_NEXT_PAGE))
+        expandedView.setViewVisibility(R.id.answerButtons, if (revealed) View.VISIBLE else View.GONE)
+        expandedView.setViewVisibility(R.id.buttonShowAnswer, if (revealed) View.GONE else View.VISIBLE)
+        expandedView.setOnClickPendingIntent(R.id.buttonShowAnswer, createIntent(context, ACTION_SHOW_ANSWER))
 
-            val expandedView = cardView(context, card, revealed, PageActions(ACTION_PREVIOUS_PAGE, ACTION_NEXT_PAGE))
-            expandedView.setViewVisibility(R.id.answerButtons, if (revealed) View.VISIBLE else View.GONE)
-            expandedView.setViewVisibility(R.id.buttonShowAnswer, if (revealed) View.GONE else View.VISIBLE)
-            expandedView.setOnClickPendingIntent(R.id.buttonShowAnswer, createIntent(context, ACTION_SHOW_ANSWER))
+        setAnswerButtons(context, expandedView, card, ACTION_BUTTON_PREFIX)
 
-            setAnswerButtons(context, expandedView, card, ACTION_BUTTON_PREFIX)
-
-            // A nudge ([NudgeSession]): pops up over the app in use, never on the lock screen, and can be swiped away.
-            val nudge = FocusSettings.nudgesEnabled(context)
-            if (nudge) createNudgeChannel(context)
-            builder = NotificationCompat.Builder(context, if (nudge) NUDGE_CHANNEL_ID else CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setVisibility(if (nudge) NotificationCompat.VISIBILITY_SECRET else NotificationCompat.VISIBILITY_PUBLIC)
-                .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-                .setCustomContentView(collapsedView)
-                .setCustomBigContentView(expandedView)
-                .setContentTitle(title)
-                // No tap action: on the lock screen, tapping expands the notification in place, while opening
-                // anything would ask to unlock first.
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setSilent(isSilent)
-                .setOnlyAlertOnce(!replace)
-                .setOngoing(!nudge)
-            if (nudge) addNudgeActions(context, builder, card, revealed, collapsedView, expandedView)
-        } else {
-            val title = context.getString(R.string.notification_title)
-            collapsedView.setTextViewText(R.id.textViewCollapsedHeader, context.getString(R.string.all_cards_done))
-            collapsedView.setTextViewText(R.id.textViewCollapsedTitle, title)
-
-            val expandedView = RemoteViews(context.packageName, R.layout.notification_expanded_empty)
-            expandedView.setTextViewText(R.id.textViewEmptyExpandedHeader, context.getString(R.string.all_cards_done))
-            expandedView.setTextViewText(R.id.textViewEmptyExpandedContent, context.getString(R.string.all_cards_done_next))
-
-            builder = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-                .setCustomContentView(collapsedView)
-                .setCustomBigContentView(expandedView)
-                .setContentTitle(title)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setSilent(isSilent)
-                .setOngoing(false)
-        }
+        val builder = NotificationCompat.Builder(context, NUDGE_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setVisibility(NotificationCompat.VISIBILITY_SECRET)
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            .setCustomContentView(collapsedView)
+            .setCustomBigContentView(expandedView)
+            .setContentTitle(title)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setSilent(isSilent)
+            .setOnlyAlertOnce(!replace)
+        addNudgeActions(context, builder, card, revealed, collapsedView, expandedView)
 
         val notification: Notification = builder.build()
 
@@ -232,39 +176,6 @@ class Notifications {
         if (replace) {
             notificationManager.cancel(NOTIFICATION_ID) // Cancel the current notification before sending a new one
         }
-        notificationManager.notify(NOTIFICATION_ID, notification)
-    }
-
-    /**
-     * After this session's review: the same notification, updated in place, shows the answered [card] with
-     * "Next card at your next unlock" instead of the answer buttons, then disappears by itself.
-     */
-    fun showNextCardMessage(context: Context, card: CardInfo, deckName: String) {
-        createChannel(context)
-        val message = context.getString(R.string.next_card_at_next_unlock)
-        val title = context.getString(R.string.notification_title_deck, deckName)
-        val collapsedView = RemoteViews(context.packageName, R.layout.notification_collapsed)
-        collapsedView.setTextViewText(R.id.textViewCollapsedHeader, message)
-        collapsedView.setTextViewText(R.id.textViewCollapsedTitle, title)
-
-        val expandedView = cardView(context, card, revealed = true, pageActions = null)
-        expandedView.setViewVisibility(R.id.textViewNextCard, View.VISIBLE)
-        expandedView.setViewVisibility(R.id.buttonShowAnswer, View.GONE)
-
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-            .setCustomContentView(collapsedView)
-            .setCustomBigContentView(expandedView)
-            .setContentTitle(title)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setTimeoutAfter(NEXT_CARD_MESSAGE_TIMEOUT_MS)
-            .setSilent(true)
-            .setOnlyAlertOnce(true)
-            .build()
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        // No cancel first: the notification is updated in place and stays expanded.
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
 
@@ -356,49 +267,6 @@ class Notifications {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         // No cancel first: the notification is updated in place, where the answer was tapped.
         notificationManager.notify(NOTIFICATION_ID, notification)
-    }
-
-    /**
-     * The scheduled review notification ([ScheduledReview]), separate from the lock screen one. Before Start:
-     * "Time for a card" and a Start action, which also shows in the pop-up. After Start: the question and
-     * "Show answer", then the answer and the answer buttons once [revealed].
-     *
-     * @param alert whether to alert (a scheduled time); otherwise it is updated in place, silently
-     */
-    fun showScheduledReview(context: Context, card: CardInfo, deckName: String, started: Boolean, revealed: Boolean, alert: Boolean) {
-        createScheduledChannel(context)
-        val title = context.getString(R.string.notification_title_deck, deckName)
-        val prompt = context.getString(R.string.scheduled_review_prompt)
-        val collapsedView = RemoteViews(context.packageName, R.layout.notification_collapsed)
-        collapsedView.setTextViewText(R.id.textViewCollapsedHeader, if (started) CardText.clean(card.q) else prompt)
-        collapsedView.setTextViewText(R.id.textViewCollapsedTitle, title)
-
-        val builder = NotificationCompat.Builder(context, SCHEDULED_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-            .setCustomContentView(collapsedView)
-            .setContentTitle(title)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setSilent(!alert)
-            .setOnlyAlertOnce(!alert)
-        if (started) {
-            val expandedView = cardView(context, card, revealed, PageActions(ScheduledReview.ACTION_PREVIOUS_PAGE, ScheduledReview.ACTION_NEXT_PAGE))
-            expandedView.setViewVisibility(R.id.answerButtons, if (revealed) View.VISIBLE else View.GONE)
-            expandedView.setViewVisibility(R.id.buttonShowAnswer, if (revealed) View.GONE else View.VISIBLE)
-            expandedView.setOnClickPendingIntent(R.id.buttonShowAnswer, createIntent(context, ScheduledReview.ACTION_SHOW_ANSWER))
-            setAnswerButtons(context, expandedView, card, ScheduledReview.ACTION_BUTTON_PREFIX)
-            builder.setCustomBigContentView(expandedView)
-        } else {
-            // A standard action, unlike the buttons of the custom view, is also shown in the pop-up.
-            builder.addAction(0, context.getString(R.string.start), createIntent(context, ScheduledReview.ACTION_START))
-        }
-
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        // A new scheduled time replaces an unanswered notification, and alerts again.
-        if (alert) notificationManager.cancel(ScheduledReview.NOTIFICATION_ID)
-        notificationManager.notify(ScheduledReview.NOTIFICATION_ID, builder.build())
     }
 
     /** Shows [card]'s answer buttons, each sending [actionPrefix] followed by its number, with the card. */

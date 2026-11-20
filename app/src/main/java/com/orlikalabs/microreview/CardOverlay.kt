@@ -3,7 +3,6 @@ package com.orlikalabs.microreview
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.graphics.PixelFormat
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
@@ -13,23 +12,31 @@ import android.os.Handler
 import android.os.Looper
 import android.view.ContextThemeWrapper
 import android.view.KeyEvent
-import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import com.orlikalabs.microreview.ui.CardScreen
+import com.orlikalabs.microreview.ui.SyncCoverScreen
+import com.orlikalabs.microreview.ui.aero.AeroTheme
+import com.orlikalabs.microreview.ui.aero.AeroThemes
+import com.orlikalabs.microreview.ui.aero.OverlayComposeOwner
 
 /**
  * The full-screen card ([FocusCardController]) drawn over the app in use, in a window of its own ("Display over
  * other apps"). Unlike an activity, it can be shown from the background at any time: Android blocks activity starts
  * from the background, and the gate only worked while the app had just been in front.
  *
- * While shown, it holds the audio focus, so a video playing behind it pauses. When it closes after answers, it asks
- * AnkiDroid to sync ([AnkiSync]): allowed while this window is visible, which then fades out over AnkiDroid's
- * moment in front. Used on the main thread; [request],
- * [onScreenOff] and [onForegroundChanged] may be called from any thread.
+ * Drawn with Compose ([CardScreen]), in the chosen theme; the window gives Compose a lifecycle of its own
+ * ([OverlayComposeOwner]). While shown, it holds the audio focus, so a video playing behind it pauses. When it
+ * closes after answers, it asks AnkiDroid to sync ([AnkiSync]): allowed while this window is visible, which then
+ * stays a moment under a "Syncing" veil over AnkiDroid's moment in front, and fades out. Used on the main thread;
+ * [request], [onScreenOff] and [onForegroundChanged] may be called from any thread.
  */
 object CardOverlay {
     private val main = Handler(Looper.getMainLooper())
@@ -47,6 +54,12 @@ object CardOverlay {
     private var window: View? = null
     private var controller: FocusCardController? = null
     private var audioFocus: AudioFocusRequest? = null
+
+    /** The Compose host of each window shown, destroyed with its window. */
+    private val owners = HashMap<View, OverlayComposeOwner>()
+
+    /** The card screen is closing over AnkiDroid's sync: the veil shows. */
+    private val syncing = mutableStateOf(false)
 
     /** Shows the card in [mode] ([app]: the gated app), from any thread. */
     fun request(context: Context, mode: FocusCardController.Mode, app: String? = null) {
@@ -83,15 +96,13 @@ object CardOverlay {
         main.post {
             if (isShowing || syncCoverShown || !FocusState.canOpenOverApps(appContext) || !AnkiSync.isDueInUse(appContext)) return@post
             val themed = ContextThemeWrapper(appContext, R.style.Theme_AnkiNotifications)
-            val label = android.widget.TextView(themed).apply {
-                setText(R.string.syncing_cover)
-                textSize = 20f
-                gravity = android.view.Gravity.CENTER
-            }
-            val frame = FrameLayout(themed).apply {
-                setBackgroundColor(backgroundColor(themed))
-                addView(label, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-            }
+            val palette = AeroThemes.current(appContext)
+            val frame = FrameLayout(themed)
+            frame.addView(
+                composeView(themed) { AeroTheme(palette) { SyncCoverScreen() } },
+                FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
+            )
+            attachOwner(frame)
             val params = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -103,6 +114,7 @@ object CardOverlay {
                 windowManager(appContext).addView(frame, params)
             } catch (e: Exception) {
                 FocusLog.i(appContext, "can't show the sync cover: $e")
+                owners.remove(frame)?.destroy()
                 return@post
             }
             syncCoverShown = true
@@ -134,13 +146,8 @@ object CardOverlay {
             dismiss(context, closedByUser = false)
         }
         val themed = ContextThemeWrapper(context, R.style.Theme_AnkiNotifications)
-        val content = LayoutInflater.from(themed).inflate(R.layout.focus_review, null)
-        // The frame takes the system bars' room; the layout keeps its own padding.
-        content.fitsSystemWindows = false
+        // Drawn edge to edge: the screen keeps its content out of the system bars ([CardScreen]).
         val frame = OverlayFrame(themed) { controller?.onBack() }
-        frame.fitsSystemWindows = true
-        frame.setBackgroundColor(backgroundColor(themed))
-        frame.addView(content, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
         val host = object : FocusCardController.Host {
             override fun close() = dismiss(context)
@@ -158,7 +165,14 @@ object CardOverlay {
                 dismiss(context)
             }
         }
-        val card = FocusCardController(themed, content, host)
+        val card = FocusCardController(themed, host)
+        val palette = AeroThemes.current(context)
+        syncing.value = false
+        frame.addView(
+            composeView(themed) { AeroTheme(palette) { CardScreen(card.ui, card, syncing.value) } },
+            FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
+        )
+        attachOwner(frame)
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -175,6 +189,7 @@ object CardOverlay {
             windowManager(context).addView(frame, params)
         } catch (e: Exception) {
             FocusLog.i(context, "can't show the card: $e")
+            owners.remove(frame)?.destroy()
             return
         }
         window = frame
@@ -202,7 +217,8 @@ object CardOverlay {
         shownApp = null
         val syncing = closedByUser && AnkiSync.isDueAfterCards(context) && AnkiSync.request(context, "after cards")
         if (syncing) {
-            // AnkiDroid shows its deck list for a moment: this window stays over it, then fades out.
+            // AnkiDroid shows its deck list for a moment: this window stays over it, under the veil, then fades out.
+            this.syncing.value = true
             shown.isEnabled = false
             shown.animate().setStartDelay(SYNC_HOLD_MS).setDuration(SYNC_FADE_MS).alpha(0f)
                 .withEndAction { remove(context, shown) }
@@ -221,6 +237,20 @@ object CardOverlay {
         } catch (e: Exception) {
             // Already removed.
         }
+        owners.remove(view)?.destroy()
+    }
+
+    private fun composeView(context: Context, content: @androidx.compose.runtime.Composable () -> Unit): ComposeView =
+        ComposeView(context).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+            setContent(content)
+        }
+
+    /** Gives [frame], a window's root, its Compose host. */
+    private fun attachOwner(frame: View) {
+        val owner = OverlayComposeOwner()
+        owner.attachTo(frame)
+        owners[frame] = owner
     }
 
     /** How long the overlay stays over AnkiDroid's moment in front after a sync request, then fades. */
@@ -228,13 +258,6 @@ object CardOverlay {
     private const val SYNC_FADE_MS = 300L
 
     private fun windowManager(context: Context) = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-
-    private fun backgroundColor(context: Context): Int {
-        val attributes = context.obtainStyledAttributes(intArrayOf(android.R.attr.colorBackground))
-        val color = attributes.getColor(0, Color.WHITE)
-        attributes.recycle()
-        return color
-    }
 
     private fun requestAudioFocus(context: Context) {
         val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return

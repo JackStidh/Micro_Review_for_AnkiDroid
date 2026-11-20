@@ -6,10 +6,8 @@
     <uses-permission android:name="com.ichi2.anki.permission.READ_WRITE_DATABASE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- "Open after unlock": lets the lock screen wallpaper open the review screen (background activity start). -->
+    <!-- "Display over other apps": the card and the app gate are drawn over the app in use (CardOverlay). -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <!-- The card picture on the lock screen, where the live wallpaper can't be lock only (LockScreenPicture). -->
-    <uses-permission android:name="android.permission.SET_WALLPAPER" />
 
     <!-- The usage monitor (UsageMonitorService): which app is in front, read from the usage events. Granted by the
          user in the system settings ("Usage access"), not at install. -->
@@ -31,13 +29,8 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
-        <!-- Whether "Wallpaper & style" exists, to set the live wallpaper on the lock screen only (WallpaperSetup). -->
-        <intent>
-            <action android:name="android.settings.WALLPAPER_SETTINGS" />
-        </intent>
     </queries>
 
-    <uses-feature android:name="android.software.live_wallpaper" android:required="false" />
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -58,19 +51,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name=".SettingsActivity"
-            android:exported="true"
-            android:label="@string/settings_title"
-            android:theme="@style/Theme.AnkiNotifications" />
-        <!-- "Open after unlock": opened by the lock screen wallpaper when the phone is unlocked. -->
-        <activity
-            android:name=".ReviewActivity"
-            android:exported="false"
-            android:excludeFromRecents="true"
-            android:launchMode="singleTop"
-            android:taskAffinity=""
-            android:theme="@style/Theme.AnkiNotifications" />
         <!-- The app gate, a full-screen nudge or a "Keep going" session: opened over the app in front. -->
         <activity
             android:name=".FocusReviewActivity"
@@ -96,38 +76,13 @@
         </service>
         <receiver android:name=".NotificationReceiver"/>
         <receiver
-            android:name=".StandardCardWidget"
-            android:exported="false"
-            android:label="@string/widget_label">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/card_widget_info" />
-        </receiver>
-        <receiver
             android:name=".BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-                <action android:name="android.intent.action.TIME_SET" />
-                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>
         </receiver>
-        <service
-            android:name=".CardWallpaperService"
-            android:exported="true"
-            android:label="@string/wallpaper_name"
-            android:permission="android.permission.BIND_WALLPAPER">
-            <intent-filter>
-                <action android:name="android.service.wallpaper.WallpaperService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.service.wallpaper"
-                android:resource="@xml/card_wallpaper" />
-        </service>
     </application>
     <queries>
         <package android:name="com.ichi2.anki" />

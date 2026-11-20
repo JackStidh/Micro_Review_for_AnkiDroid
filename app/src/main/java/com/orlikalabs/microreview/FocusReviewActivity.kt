@@ -3,16 +3,23 @@ package com.orlikalabs.microreview
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import com.orlikalabs.microreview.ui.CardScreen
+import com.orlikalabs.microreview.ui.aero.AeroTheme
+import com.orlikalabs.microreview.ui.aero.AeroThemes
 
 /**
  * The full-screen card ([FocusCardController]) as a screen of the app, opened from a notification: "Keep going"
  * after a nudge's answer, or a tap on a nudge's notification to see the whole card. The gate and the nudges
  * themselves are shown over the app in use ([CardOverlay]).
  *
- * Closed when left, like the review screen of "Open after unlock".
+ * Closed when left.
  */
 class FocusReviewActivity : ComponentActivity() {
     private lateinit var controller: FocusCardController
@@ -32,9 +39,12 @@ class FocusReviewActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val palette = AeroThemes.current(this)
+        val bars = if (palette.isDark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+        enableEdgeToEdge(bars, bars)
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.focus_review)
-        controller = FocusCardController(this, findViewById(R.id.focusRoot), host)
+        controller = FocusCardController(this, host)
+        setContent { AeroTheme(palette) { CardScreen(controller.ui, controller) } }
         // Back, button or gesture.
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = controller.onBack()

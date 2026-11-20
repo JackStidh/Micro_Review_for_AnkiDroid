@@ -10,22 +10,20 @@ import androidx.work.WorkerParameters
 import java.util.concurrent.TimeUnit
 
 /**
- * Hourly check that the displayed card is still in sync with AnkiDroid: catches new cards after "Bravo", and
- * cards reviewed in AnkiDroid while the phone stays unlocked.
+ * Hourly check that the displayed card is still in sync with AnkiDroid (new cards after "Bravo", cards reviewed in
+ * AnkiDroid), and that the monitor of the nudges and the gate still runs.
  */
 class PeriodicWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
 
     override fun doWork(): Result {
         Log.i("BackgroundService", "Periodic worker RAN")
-        // A safety net: alarms can be lost (app force-stopped).
-        ScheduledReview.schedule(applicationContext)
-        // And the monitor can be stopped by the system: start it again if Android lets a background start through.
+        // The monitor can be stopped by the system: start it again if Android lets a background start through.
         UsageMonitorService.sync(applicationContext)
         if (DeckSelection.load(applicationContext).isEmpty() && AnkiDroidHelper(applicationContext).storedState == null) {
             Log.i("BackgroundService", "Periodic worker - no deck selected")
             return Result.success()
         }
-        CardStateController.syncWithAnkiDroid(applicationContext, alertOnNewCards = true)
+        CardStateController.syncWithAnkiDroid(applicationContext)
         return Result.success()
     }
 

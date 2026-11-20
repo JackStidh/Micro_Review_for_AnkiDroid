@@ -6,7 +6,7 @@ import android.net.Uri
 import android.util.Log
 
 /**
- * Reviewing the displayed card from the notification buttons.
+ * Reviewing the displayed card: from the card screen ([FocusCardController]) or a nudge's notification buttons.
  * Does ContentProvider I/O: call it off the main thread.
  */
 object CardReview {
@@ -28,25 +28,23 @@ object CardReview {
     private val answerLock = Any()
 
     /**
-     * Answers the displayed card with [button] (one of [AnswerButtons]) and stores the next card. The next card
-     * is shown right away, or, once the lock session's cards are reviewed, at the next lock ("Next card at your next unlock").
-     * With no card left, the notification is removed.
+     * Answers the displayed card with [button] (one of [AnswerButtons]) and stores the next card. With no card
+     * left, the notification is removed.
      *
      * Only if [card], the card the button was shown with, is still the displayed one: otherwise the tap came late
      * (a double tap, a tap queued while the previous answer was being recorded) and would answer a card the user
      * hasn't seen, or the same card twice. It is then ignored.
      *
-     * @param countsForSession whether the answer is the lock session's review; not from the home screen widget,
-     *   which always moves on to the next card
-     * @return what happens next, or null if the answer was ignored
+     * @param fromNotification answered from a nudge's notification: "Keep going" is offered there afterwards
+     * @return whether the answer was taken (false: ignored)
      */
-    fun answer(context: Context, button: Int, card: CardSync.CardKey, countsForSession: Boolean = true): LockSession.AfterAnswer? =
+    fun answer(context: Context, button: Int, card: CardSync.CardKey, fromNotification: Boolean = true): Boolean =
         synchronized(answerLock) {
             val anki = AnkiDroidHelper(context)
             val localState = anki.storedState?.takeIf { it.hasCard() }
             if (localState == null || CardSync.CardKey(localState.noteID, localState.cardOrd) != card) {
                 Log.i(TAG, "answer for note ${card.noteId}, ord ${card.ord} ignored: it isn't the displayed card any more")
-                return null
+                return false
             }
             Log.i(TAG, "answering note ${localState.noteID}, ord ${localState.cardOrd}")
             // Measured now, before the AnkiDroid queries below.
@@ -54,10 +52,8 @@ object CardReview {
             val ease = AnswerButtons.easeFor(button, localState.buttonCount)
             if (ease == null) {
                 Log.w(TAG, "button $button is not valid for a card with ${localState.buttonCount} buttons")
-                return null
+                return false
             }
-            // Also when answered while unlocked (scheduled review): it counts as this session's review.
-            val after = if (countsForSession) LockSession.onAnswered(context) else LockSession.AfterAnswer.SHOW_NEXT
             // The card may have been reviewed, buried or deleted in AnkiDroid since it was shown: answering it
             // again would record a second review. Null means it couldn't be checked: answer as before.
             if (anki.isCardDue(localState.deckId, localState.noteID, localState.cardOrd) == false) {
@@ -69,11 +65,11 @@ object CardReview {
                 AnkiSync.onChanged(context)
             }
 
-            // Answered from a nudge: the next card waits for its own nudge, and "Keep going" is offered meanwhile.
-            val nudge = countsForSession && NudgeSession.isActive(context)
+            // Answered from a nudge's notification: the next card waits for its own nudge, and "Keep going" is
+            // offered meanwhile.
+            val nudge = fromNotification && NudgeSession.isActive(context)
             if (nudge) NudgeSession.onAnswered(context)
 
-            // After the session's last review, the next card is stored now but its notification waits for the next lock.
             CardStateController.showNextCard(context, silent = true)
             if (nudge) {
                 // With no card left, the notification was removed: nothing to keep going with.
@@ -81,15 +77,8 @@ object CardReview {
                     Notifications.create().showKeepGoingPrompt(context, localState.toCardInfo(), localState.deckName)
                 }
                 NudgeSession.onPromptDone(context)
-                return after
             }
-            // Only while locked: unlocked (answered from a scheduled review), the lock screen notification stays hidden.
-            // Not with no card left: no next card to announce. The stored card stays if AnkiDroid couldn't be read.
-            if (after == LockSession.AfterAnswer.WAIT_FOR_NEXT_LOCK && LockSession.isLocked(context) && anki.storedState?.hasCard() == true) {
-                // The answered card stays in the notification, with the message in place of its buttons.
-                Notifications.create().showNextCardMessage(context, localState.toCardInfo(), localState.deckName)
-            }
-            after
+            true
         }
 
     /**
@@ -117,8 +106,7 @@ object CardReview {
         ReviewTimer.onCardSeen(context, CardSync.CardKey(state.noteID, state.cardOrd))
         // The pages change with the answer: back to its first one.
         prefs(context).edit().putString(KEY_REVEALED_CARD, key(state.noteID, state.cardOrd)).remove(KEY_PAGE_CARD).apply()
-        StandardCardWidget.updateAll(context)
-        if (!LockSession.mayPostNow(context)) return
+        if (!NudgeSession.isActive(context)) return
         Notifications.create().showNotification(context, state.toCardInfo(), state.deckName, isSilent = true, replace = false)
     }
 
@@ -152,9 +140,9 @@ object CardReview {
     fun showPage(context: Context, step: Int) {
         val state = AnkiDroidHelper(context).storedState?.takeIf { it.hasCard() } ?: return
         val card = state.toCardInfo()
-        val revealed = isAnswerRevealed(context, card) || isAnswerOnWallpaper(context)
+        val revealed = isAnswerRevealed(context, card)
         moveToPage(context, card, revealed, step)
-        if (!LockSession.mayPostNow(context)) return
+        if (!NudgeSession.isActive(context)) return
         Notifications.create().showNotification(context, card, state.deckName, isSilent = true, replace = false)
     }
 
@@ -171,8 +159,8 @@ object CardReview {
     }
 
     /**
-     * The page of [card] to show, among its [pages]. Until "Previous" or "Next" is tapped: the answer's first page after "Show
-     * answer"; otherwise the first page, also when the wallpaper shows the answer: the question hasn't been read yet.
+     * The page of [card] to show, among its [pages]. Until "Previous" or "Next" is tapped: the answer's first page
+     * after "Show answer"; otherwise the first page.
      */
     fun currentPage(context: Context, card: CardInfo, pages: List<CardPages.Page>): Int {
         val prefs = prefs(context)
@@ -185,14 +173,6 @@ object CardReview {
     /** Whether the answer of [card] was revealed. */
     fun isAnswerRevealed(context: Context, card: CardInfo): Boolean =
         prefs(context).getString(KEY_REVEALED_CARD, null) == key(card.noteID, card.cardOrd)
-
-    /**
-     * Whether the lock screen wallpaper (or the card picture) shows the answer under the question: the
-     * notification then shows the answer and its buttons right away, without "Show answer".
-     */
-    fun isAnswerOnWallpaper(context: Context): Boolean =
-        WallpaperStyle.load(context).showAnswer &&
-            (CardWallpaperService.isActive(context) || LockScreenPicture.isActive(context))
 
     private fun key(noteId: Long, ord: Int) = "$noteId:$ord"
 

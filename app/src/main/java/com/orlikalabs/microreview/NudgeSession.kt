@@ -7,10 +7,9 @@ import android.util.Log
 /**
  * A nudge: the current card offered while the phone is in use, when [UsageMonitorService] says one is due. By
  * default it takes the screen, over the app in use ([CardOverlay]). Otherwise, or without "Display over other apps",
- * it is a pop-up notification. With nudges on, the card notification is only posted for the length of a nudge
- * ([LockSession.mayPostNow]): it is
- * never on the lock screen, and it is withdrawn when it is no longer looked at (screen off, ignored, swiped), so
- * the time recorded with an answer is time actually spent on the card.
+ * it is a pop-up notification, only posted for the length of the nudge ([isActive]): never on the lock screen,
+ * and withdrawn when it is no longer looked at (screen off, ignored, swiped), so the time recorded with an answer is
+ * time actually spent on the card.
  *
  * After the answer, the notification offers "Keep going" for a few seconds ([Notifications.showKeepGoingPrompt]),
  * which opens the review screen for as many cards as wanted; otherwise the next card waits for the next nudge.
@@ -79,14 +78,12 @@ object NudgeSession {
         prefs.edit().putBoolean(KEY_ACTIVE, false).putBoolean(KEY_PROMPTING, false).commit()
         ReviewTimer.clear(context)
         CardReview.hideAnswer(context)
-        LockSession.markHidden(context)
         notificationManager(context).cancel(Notifications.NOTIFICATION_ID)
     }
 
     /** The notification's card was tapped: it continues full screen ([FocusReviewActivity]), its timer running. */
     fun handOver(context: Context) {
         prefs(context).edit().putBoolean(KEY_ACTIVE, false).putBoolean(KEY_PROMPTING, false).commit()
-        LockSession.markHidden(context)
         notificationManager(context).cancel(Notifications.NOTIFICATION_ID)
     }
 
@@ -114,17 +111,11 @@ object NudgeSession {
         UsageMonitorService.refreshNotification(context)
     }
 
-    /** Nudges were turned on or off: the card notification of the other way of reviewing is removed or comes back. */
+    /** Nudges were turned on or off: a nudge in progress is over. */
     fun onModeChanged(context: Context) {
         prefs(context).edit().clear().commit()
         ReviewTimer.clear(context)
-        if (FocusSettings.nudgesEnabled(context)) {
-            LockSession.markHidden(context)
-            notificationManager(context).cancel(Notifications.NOTIFICATION_ID)
-        } else {
-            // The next sync posts the card again.
-            LockSession.clearHidden(context)
-        }
+        notificationManager(context).cancel(Notifications.NOTIFICATION_ID)
     }
 
     private fun notificationManager(context: Context) =

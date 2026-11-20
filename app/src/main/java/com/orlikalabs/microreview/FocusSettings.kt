@@ -41,6 +41,9 @@ object FocusSettings {
     private const val KEY_GATE_PASS = "gate_pass"
     private const val KEY_SNOOZE_LIFTS_GATE = "snooze_lifts_gate"
 
+    /** The look of the app ([com.orlikalabs.microreview.ui.aero.AeroThemes]): a theme's name. */
+    private const val KEY_THEME = "theme"
+
     const val DEFAULT_INTERVAL_MINUTES = 20
     const val DEFAULT_NUDGE_LIFETIME_SECONDS = 30
     const val DEFAULT_SNOOZE_MINUTES = 30
@@ -205,6 +208,12 @@ object FocusSettings {
 
     /** Whether anything needs the phone's use to be watched ([UsageMonitorService]). */
     fun monitorWanted(context: Context): Boolean = nudgesEnabled(context) || gateEnabled(context)
+
+    // Look
+
+    fun themeName(context: Context): String? = prefs(context).getString(KEY_THEME, null)
+
+    fun setThemeName(context: Context, name: String) = prefs(context).edit().putString(KEY_THEME, name).apply()
 
     private fun prefs(context: Context): SharedPreferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 }

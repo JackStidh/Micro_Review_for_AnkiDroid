@@ -7,32 +7,29 @@ import android.util.Log
 import kotlin.concurrent.thread
 
 /**
- * Notifications and alarms don't survive a reboot: shows the current card again, checked against AnkiDroid, and
- * sets the scheduled review alarm again. After an app update or a clock or time zone change, only the alarm.
+ * After a reboot or an app update, starts the monitor of the nudges and the gate again; after a reboot, also checks
+ * the stored card against AnkiDroid.
  */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED -> Unit
-            Intent.ACTION_MY_PACKAGE_REPLACED, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED -> {
-                Log.i("Notifications", "${intent.action}: setting the scheduled review alarm again")
-                ScheduledReview.schedule(context.applicationContext)
+            Intent.ACTION_MY_PACKAGE_REPLACED -> {
                 // An app update stops the monitor.
-                if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) UsageMonitorService.sync(context)
+                UsageMonitorService.sync(context)
                 return
             }
             else -> return
         }
-        Log.i("Notifications", "boot completed, restoring the card notification")
+        Log.i("Notifications", "boot completed")
         UsageMonitorService.sync(context)
         val pendingResult = goAsync()
         val appContext = context.applicationContext
         thread {
             try {
-                ScheduledReview.schedule(appContext)
                 CardStateController.syncWithAnkiDroid(appContext)
             } catch (e: Exception) {
-                Log.e("Notifications", "could not restore the notification after boot", e)
+                Log.e("Notifications", "could not check the card after boot", e)
             } finally {
                 pendingResult.finish()
             }

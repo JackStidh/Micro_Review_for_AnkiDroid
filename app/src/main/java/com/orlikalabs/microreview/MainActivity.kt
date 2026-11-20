@@ -2,9 +2,10 @@ package com.orlikalabs.microreview
 
 import android.Manifest
 import android.app.ActivityManager
-import android.app.NotificationManager
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -12,39 +13,54 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.orlikalabs.microreview.ui.CurrentCard
 import com.orlikalabs.microreview.ui.DeckItem
-import com.orlikalabs.microreview.ui.MainScreen
-import com.orlikalabs.microreview.ui.MainScreenActions
+import com.orlikalabs.microreview.ui.HomeActions
+import com.orlikalabs.microreview.ui.HomeScreen
+import com.orlikalabs.microreview.ui.HomeStatus
 import com.orlikalabs.microreview.ui.ScreenState
-import com.orlikalabs.microreview.ui.SetupStatus
-import com.orlikalabs.microreview.ui.WallpaperSetup
-import com.orlikalabs.microreview.ui.theme.AnkiNotificationsTheme
+import com.orlikalabs.microreview.ui.SetupNeed
+import com.orlikalabs.microreview.ui.aero.AeroPalette
+import com.orlikalabs.microreview.ui.aero.AeroTheme
+import com.orlikalabs.microreview.ui.aero.AeroThemes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.concurrent.thread
 
 private const val DECK_CHANGE_DEBOUNCE_MS = 800L
+private const val STATUS_REFRESH_MS = 10_000L
 private const val TAG = "BackgroundService"
 
+/**
+ * The home screen ([HomeScreen]): where things stand (the next card, a pause, a snooze), the next card, what is
+ * left to allow, the decks to review in their order, and the theme. Loads the decks off the main thread.
+ */
 class MainActivity : ComponentActivity() {
     private var screenState by mutableStateOf<ScreenState>(ScreenState.Loading)
     private val decks = mutableStateListOf<DeckItem>()
     private val selectedDeckIds = mutableStateListOf<Long>()
     private var currentCard by mutableStateOf<CurrentCard>(CurrentCard.NotStarted)
-    private var setupStatus by mutableStateOf(SetupStatus())
+    private var status by mutableStateOf(HomeStatus())
+    private var needs by mutableStateOf(emptyList<SetupNeed>())
+    private var palette by mutableStateOf(AeroThemes.SAKURA)
 
     private val permissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
@@ -55,50 +71,92 @@ class MainActivity : ComponentActivity() {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
+        palette = AeroThemes.current(this)
+        applyBars(palette)
         super.onCreate(savedInstanceState)
-        Notifications.createChannel(this)
+        Notifications.removeOldChannels(this)
         if (DeckSelection.load(this).isNotEmpty()) {
             // Reviewing is started: make sure the periodic check uses the current interval.
             PeriodicWorker.schedule(applicationContext)
         }
-        // Alarms are lost when the app is force-stopped: set the next scheduled review again.
-        ScheduledReview.schedule(applicationContext)
         // The monitor of the nudges and the app gate, if they are on: opening the app is always allowed to start it.
         UsageMonitorService.sync(applicationContext)
         requestMissingPermissions()
 
-        val actions = MainScreenActions(
+        val actions = HomeActions(
             onToggleDeck = ::toggleDeck,
             onMoveDeck = ::moveDeck,
             onGrantPermission = ::requestMissingPermissions,
             onRetry = ::refresh,
-            onOpenWallpaperSettings = { WallpaperSetup.openSettings(this) },
-            onSetLockScreenPicture = { lifecycleScope.launch { if (WallpaperSetup.setPicture(this@MainActivity)) refresh() } },
-            onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) },
-            onOpenNotificationSettings = ::openNotificationSettings,
-            onOpenBatterySettings = ::openBatterySettings,
-            onOpenFocus = { startActivity(Intent(this, FocusSettingsActivity::class.java)) },
+            onOpenSettings = { startActivity(Intent(this, FocusSettingsActivity::class.java)) },
+            onCardNow = { startActivity(FocusReviewActivity.sessionIntent(this)) },
+            onSnooze = ::snooze,
+            onResume = {
+                FocusState.resume(this)
+                UsageMonitorService.refreshNotification(this)
+                status = readStatus()
+            },
+            onSync = {
+                // In front: allowed to start AnkiDroid's sync.
+                AnkiSync.request(this, "from the app")
+                status = readStatus()
+            },
+            onTheme = ::chooseTheme,
+            onFix = ::fix,
         )
         setContent {
-            AnkiNotificationsTheme {
-                MainScreen(
-                    state = screenState,
-                    decks = decks,
-                    selectedDeckIds = selectedDeckIds,
-                    currentCard = currentCard,
-                    liveLockOnly = WallpaperSetup.liveLockOnly(this),
-                    setup = setupStatus,
-                    actions = actions,
-                )
+            Crossfade(palette, animationSpec = tween(450), label = "theme") { shown ->
+                AeroTheme(shown) {
+                    HomeScreen(
+                        state = screenState,
+                        decks = decks,
+                        selectedDeckIds = selectedDeckIds,
+                        currentCard = currentCard,
+                        status = status,
+                        needs = needs,
+                        snoozeMinutes = FocusSettings.snoozeMinutes(this),
+                        actions = actions,
+                    )
+                }
+            }
+        }
+        // The status moves on by itself (the next card's minutes, a snooze ending): read again while shown.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    status = readStatus()
+                    delay(STATUS_REFRESH_MS)
+                }
             }
         }
     }
 
     override fun onResume() {
         super.onResume()
-        // Due counts and the current card change while reviewing from the notification.
+        // Back from the settings or the system's: the theme, the decks or a permission may have changed.
+        val chosen = AeroThemes.current(this)
+        if (chosen.id != palette.id) chooseTheme(chosen)
         refresh()
+    }
+
+    private fun chooseTheme(chosen: AeroPalette) {
+        AeroThemes.choose(this, chosen)
+        palette = chosen
+        applyBars(chosen)
+    }
+
+    /** Light or dark status and navigation bar icons, for the theme. */
+    private fun applyBars(palette: AeroPalette) {
+        val bars = if (palette.isDark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+        enableEdgeToEdge(bars, bars)
+    }
+
+    private fun snooze() {
+        FocusState.snooze(this, FocusSettings.snoozeMinutes(this))
+        val context = applicationContext
+        thread { NudgeSession.withdraw(context) }
+        UsageMonitorService.refreshNotification(this)
+        status = readStatus()
     }
 
     private fun requestMissingPermissions() {
@@ -119,7 +177,8 @@ class MainActivity : ComponentActivity() {
         ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
     private fun refresh() {
-        setupStatus = readSetupStatus()
+        status = readStatus()
+        needs = readNeeds()
         if (!AnkiDroidHelper.isApiAvailable(this)) {
             screenState = ScreenState.ApiUnavailable
             return
@@ -180,6 +239,52 @@ class MainActivity : ComponentActivity() {
         return CurrentCard.Showing(question, anki.getDeckName(state.deckId) ?: "")
     }
 
+    private fun readStatus(): HomeStatus {
+        val now = System.currentTimeMillis()
+        val snoozeUntil = FocusSettings.snoozeUntil(this)
+        val snoozed = QuietTime.isSnoozed(snoozeUntil, now)
+        return HomeStatus(
+            nudgesOn = FocusSettings.nudgesEnabled(this),
+            gateOn = FocusSettings.gateEnabled(this),
+            gatedApps = FocusSettings.gatedApps(this).size,
+            nextCardMinutes = MonitorStatus.nextCardMs?.let { ((it + 59_999) / 60_000).toInt() },
+            pause = if (snoozed) null else FocusState.pauseReason(this, now),
+            snoozedUntil = if (snoozed) UsageMonitorService.formatTime(this, snoozeUntil) else null,
+            pcPaired = FocusSettings.pcPairingCode(this) != null,
+            answersWaiting = AnkiSync.isPending(this),
+        )
+    }
+
+    private fun readNeeds(): List<SetupNeed> = buildList {
+        val needsOverlay = FocusSettings.gateEnabled(this@MainActivity) ||
+            (FocusSettings.nudgesEnabled(this@MainActivity) && FocusSettings.nudgeStyle(this@MainActivity) == FocusSettings.NudgeStyle.FULL_SCREEN)
+        if (FocusSettings.monitorWanted(this@MainActivity) && !FocusState.hasUsageAccess(this@MainActivity)) add(SetupNeed.USAGE_ACCESS)
+        if (needsOverlay && !FocusState.canOpenOverApps(this@MainActivity)) add(SetupNeed.OVERLAY)
+        if (!NotificationManagerCompat.from(this@MainActivity).areNotificationsEnabled()) add(SetupNeed.NOTIFICATIONS)
+        if (isBackgroundRestricted()) add(SetupNeed.BATTERY)
+    }
+
+    private fun fix(need: SetupNeed) {
+        when (need) {
+            SetupNeed.USAGE_ACCESS -> open(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+            SetupNeed.OVERLAY -> open(
+                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")),
+                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION),
+            )
+            SetupNeed.NOTIFICATIONS -> open(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+            // The app's info page, where "App battery usage" is.
+            SetupNeed.BATTERY -> open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
+        }
+    }
+
+    private fun open(intent: Intent, fallback: Intent? = null) {
+        try {
+            startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            if (fallback != null) startActivity(fallback)
+        }
+    }
+
     private fun toggleDeck(deckId: Long) {
         if (!selectedDeckIds.remove(deckId)) {
             selectedDeckIds.add(deckId)
@@ -218,40 +323,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun readSetupStatus(): SetupStatus {
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        val channel = notificationManager.getNotificationChannel(Notifications.CHANNEL_ID)
-        val notificationsEnabled = NotificationManagerCompat.from(this).areNotificationsEnabled() &&
-            channel?.importance != NotificationManager.IMPORTANCE_NONE
-
-        // The live wallpaper or the card picture.
-        val liveWallpaper = CardWallpaperService.isActive(this)
-        val wallpaperActive = liveWallpaper || LockScreenPicture.isActive(this)
-
-        return SetupStatus(
-            notificationsEnabled = notificationsEnabled,
-            wallpaperActive = wallpaperActive,
-            liveWallpaper = liveWallpaper,
-            backgroundAllowed = !isBackgroundRestricted(),
-        )
-    }
-
     /**
      * Whether the user restricted the app's background activity ("Restricted" battery usage), which stops the
-     * hourly check. The default battery optimization ("Optimized") only delays it a little: that's fine.
+     * hourly check and the monitor. The default battery optimization ("Optimized") is fine.
      */
     private fun isBackgroundRestricted(): Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
             (getSystemService(ACTIVITY_SERVICE) as ActivityManager).isBackgroundRestricted
-
-    private fun openNotificationSettings() {
-        startActivity(
-            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-        )
-    }
-
-    private fun openBatterySettings() {
-        // The app's info page, where "App battery usage" is.
-        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
-    }
 }

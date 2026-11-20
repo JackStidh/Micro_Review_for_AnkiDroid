@@ -13,41 +13,11 @@
     <string name="notification_title">Anki</string>
     <string name="notification_title_deck">Anki • %1$s</string>
     <string name="next_card_at_next_unlock">Next card at your next unlock</string>
-    <string name="current_card_lock_hint">Lock your phone to review it: the card is only shown while the phone is locked.</string>
-    <string name="cards_per_unlock">Cards per unlock</string>
-    <plurals name="cards_per_unlock_limit">
-        <item quantity="one">%1$d card each time you unlock your phone, as a small habit. The next card comes at your next unlock.</item>
-        <item quantity="other">%1$d cards each time you unlock your phone. The next card comes at your next unlock.</item>
-    </plurals>
-    <string name="cards_per_unlock_no_limit">No limit: after each answer, the next card is shown right away.</string>
-    <string name="rotate_on_unlock">Change the card at every unlock</string>
-    <string name="rotate_on_unlock_off">Off: an unanswered card stays until you answer it.</string>
-    <string name="rotate_on_unlock_on">On: if you unlock without answering, another due card comes at the next lock. Skipped cards stay due in AnkiDroid; after an answer, the first card comes back.</string>
-    <string name="cards_per_unlock_needs_wallpaper">The number of cards per unlock works once the live card wallpaper is set on the lock screen. Until then (or with the card picture), cards follow each other.</string>
-    <string name="rotate_on_unlock_needs_wallpaper">Works once the live card wallpaper is set on the lock screen.</string>
-    <string name="rotation_size">Rotate through the first %1$d due cards</string>
-    <string name="rotation_size_warning">Above %1$d cards, the most urgent cards come back less often, and checking the card at each lock takes longer.</string>
-    <string name="success">Success</string>
-    <string name="review_close">Close</string>
-    <string name="review_no_card">No card to review. Open Micro Review for AnkiDroid and select a deck.</string>
-
-    <!-- Home screen card widget -->
-    <string name="widget_label">Card</string>
-    <string name="widget_description">Review the current card from your home screen.</string>
-    <string name="widget_not_started">Tap to select your decks.</string>
-    <string name="widget_start">Start review</string>
-    <plurals name="widget_due">
-        <item quantity="one">%1$d card due</item>
-        <item quantity="other">%1$d cards due</item>
-    </plurals>
 
     <!-- Main screen -->
-    <string name="current_card">Current card</string>
-    <string name="current_card_none">Tick a deck below to start reviewing: its first card shows up in a notification.</string>
+    <string name="current_card_none">Tick a deck below to start reviewing.</string>
     <string name="all_cards_done">Bravo! You\'ve finished all cards in the selected decks.</string>
     <string name="all_cards_done_next">New cards will show up here when it\'s time to study.</string>
-    <string name="wallpaper_not_started">Select your decks in Micro Review for AnkiDroid</string>
-    <string name="from_deck">From %1$s</string>
     <string name="review_order">Review order</string>
     <string name="review_order_explanation">Cards come from the first deck below that has one to review, then the next one. A deck includes its subdecks. Cards with sound in the question are skipped.</string>
     <string name="review_order_empty">Tick decks in the list below to review them.</string>
@@ -57,7 +27,6 @@
     <string name="expand">Expand</string>
     <string name="collapse">Collapse</string>
     <string name="no_decks">No decks found in AnkiDroid.</string>
-    <string name="deck_counts">%1$d new · %2$d learning · %3$d review</string>
     <string name="move_up">Move up</string>
     <string name="move_down">Move down</string>
     <string name="app_version">%1$s · version %2$s</string>
@@ -71,12 +40,11 @@
     <string name="error_load_failed">AnkiDroid didn\'t give its decks: it may be updating, or its collection may be closed. Open AnkiDroid, then retry. If you just enabled its API, close AnkiDroid from the recent apps and open it again first.</string>
     <string name="grant_permission">Grant access</string>
     <string name="retry">Retry</string>
-    <string name="notification_permission_denied">Notifications are disabled: cards can\'t be reviewed from the notification. Enable them in the app\'s system settings.</string>
+    <string name="notification_permission_denied">Notifications are disabled: the monitor\'s notification and its Snooze buttons won\'t show. Enable them in the app\'s system settings.</string>
     <string name="permission_not_granted">Permission to read AnkiDroid cards was not granted.</string>
 
-    <!-- Wallpaper settings -->
+    <!-- Settings: help -->
     <string name="settings_title">Settings</string>
-    <string name="settings_behavior">Behavior</string>
     <string name="settings_help">Help</string>
     <string name="report_issue">Report an issue</string>
     <string name="report_issue_summary">Opens a new issue on GitHub, with your phone model, Android version and app versions already filled in. You can check and edit everything before sending it.</string>
@@ -86,107 +54,16 @@
     <string name="licenses_summary">The license of this app and of the libraries it uses.</string>
     <string name="licenses_libraries">Libraries</string>
     <string name="close">Close</string>
-    <string name="wallpaper_content">Lock screen content</string>
-    <string name="wallpaper_content_question">Question</string>
-    <string name="wallpaper_content_question_answer">Question and answer</string>
-    <string name="wallpaper_content_question_summary">The lock screen shows the question. Tap Show answer in the notification to see the answer.</string>
-    <string name="wallpaper_content_question_answer_summary">The lock screen shows the answer under the question, and the notification shows the answer buttons right away.</string>
-    <string name="wallpaper_content_question_summary_review_screen">The lock screen shows the question. Tap Show answer in the review screen to see the answer.</string>
-    <string name="wallpaper_content_question_answer_summary_review_screen">The lock screen shows the answer under the question, and the review screen shows the answer buttons right away.</string>
-    <string name="review_mode">How to review</string>
-    <string name="review_mode_notification">Notification</string>
-    <string name="review_mode_open_after_unlock">Open after unlock</string>
-    <string name="review_mode_notification_summary">Review from the notification on the lock screen, without unlocking.</string>
-    <string name="review_mode_open_after_unlock_summary">No notification: the card is on the lock screen, and the review screen opens when you unlock your phone.</string>
-    <string name="review_mode_needs_overlay">Android only lets the app open the review screen with the \"Display over other apps\" permission. Until it is allowed, the notification is used.</string>
-    <string name="review_mode_allow_overlay">Allow</string>
-    <string name="review_mode_needs_wallpaper">Works once the live card wallpaper is set on the lock screen. Until then, the notification is used.</string>
-    <string name="style_settings_title">Style</string>
-    <string name="style_target_lock_screen">Lock screen</string>
-    <string name="style_target_widget">Widget</string>
-    <string name="widget_background_see_through">Wallpaper (see-through)</string>
-    <string name="widget_background_see_through_summary">The home screen wallpaper shows through the widget. It can be darkened or lightened, but not blurred: the app can\'t read the wallpaper picture.</string>
-    <string name="wallpaper_status_active">The card wallpaper is set on the lock screen.</string>
-    <string name="wallpaper_status_missing">The card wallpaper is not set on the lock screen</string>
-    <string name="back">Back</string>
-    <string name="wallpaper_background">Background</string>
-    <string name="wallpaper_choose_image">Choose an image</string>
-    <string name="wallpaper_remove_image">Remove image</string>
-    <string name="wallpaper_image_error">This image can\'t be used.</string>
-    <string name="picture_filter">Picture filter</string>
-    <string name="picture_filter_darken">Darken</string>
-    <string name="picture_filter_lighten">Lighten</string>
-    <string name="picture_filter_blur">Blur</string>
-    <string name="picture_filter_gradient">Gradient</string>
-    <string name="picture_filter_panel">Text panel</string>
-    <string name="picture_filter_none">None</string>
-    <string name="picture_filter_intensity">Intensity: %1$d%%</string>
-    <string name="wallpaper_text_color">Text color</string>
-    <string name="wallpaper_text_size">Text size</string>
-    <string name="text_size_small">Small</string>
-    <string name="text_size_medium">Medium</string>
-    <string name="text_size_large">Large</string>
-    <string name="wallpaper_preview_question">¿Dónde está la biblioteca?</string>
-    <string name="wallpaper_preview_deck">Example deck</string>
-    <string name="wallpaper_preview_answer">Where is the library?</string>
 
     <!-- Setup checklist -->
-    <string name="setup_title">Finish setting up</string>
-    <string name="setup_notifications">Allow notifications</string>
-    <string name="setup_notifications_detail">Needed to review cards from the notification.</string>
-    <string name="setup_wallpaper">Show cards on the lock screen</string>
-    <string name="setup_wallpaper_detail">Set Micro Review for AnkiDroid as your lock screen wallpaper. It is also needed to show the card only while the phone is locked, one card per unlock; without it, the notification stays visible.</string>
     <string name="setup_battery">Keep checking for new cards</string>
-    <string name="setup_battery_detail">Background activity is restricted for this app, so new cards don\'t show up. Set its battery usage to Optimized or Unrestricted.</string>
-    <string name="setup_fix">Fix</string>
-    <string name="setup_wallpaper_detail_picture">Set a picture of the current card as your lock screen wallpaper. It changes with each card; your home screen wallpaper stays unchanged.</string>
-    <string name="live_wallpaper_both_screens_note">On this device, the live card wallpaper is also your home screen wallpaper. A picture of the card can be set on the lock screen only instead.</string>
-    <string name="wallpaper_configured">Lock screen wallpaper configured</string>
-    <string name="lock_screen_sensitive_tip">Answer hidden on the lock screen? Allow sensitive notifications in your phone\'s notification settings.</string>
-
-    <!-- Notification -->
-    <string name="notification_channel_name">Cards to review</string>
-    <string name="notification_channel_description">The current card, with its answer and the review buttons. Shown on the lock screen.</string>
-    <string name="scheduled_channel_name">Reviews at set times</string>
-    <string name="scheduled_channel_description">A card to review at the times chosen in the app\'s settings.</string>
-    <string name="scheduled_review_prompt">Time for a card</string>
-    <string name="start">Start</string>
-
-    <!-- Scheduled reviews (settings) -->
-    <string name="scheduled_review_settings">Reviews at set times</string>
-    <string name="scheduled_review">Notify me at set times</string>
-    <string name="scheduled_review_off">Off: cards only come on the lock screen.</string>
-    <string name="scheduled_review_on">On: at each time below, a notification offers the current card. Tap Start to see the question. It may come a few minutes late.</string>
-    <string name="scheduled_review_no_time">Add a time to get a notification.</string>
-    <string name="scheduled_review_add_time">Add a time</string>
-    <string name="scheduled_review_remove_time">Remove this time</string>
-
-    <!-- Lock screen wallpaper -->
-    <string name="wallpaper_name">Micro Review for AnkiDroid</string>
-    <string name="wallpaper_description">Shows the card to review on the lock screen.</string>
-    <string name="set_lock_wallpaper">Set lock screen wallpaper</string>
-    <string name="open_wallpaper_settings">Open wallpaper settings</string>
-    <string name="set_lock_wallpaper_instructions">In the wallpaper settings:\n\n1. Select the Lock screen preview (not Home screen).\n2. Open the wallpaper list, choose Live wallpapers, then Micro Review for AnkiDroid.\n3. When asked where to apply it, choose Lock screen only.\n\nYour home screen wallpaper stays unchanged.</string>
-    <string name="lock_picture_instructions">Micro Review for AnkiDroid sets a picture of the current card as your lock screen wallpaper, and changes it with each card. Your home screen wallpaper stays unchanged.\n\nYour current lock screen picture is replaced, and the app can\'t put it back.\n\nIf the card doesn\'t show on your lock screen, turn off the lock screen features that change the picture by themselves (for example Magazine unlock or Glance).</string>
-    <string name="lock_picture_live_alternative">A live wallpaper is also possible on this device, but it replaces your home screen wallpaper too, and some lock screens don\'t show it.</string>
-    <string name="lock_picture_set_button">Set the card picture</string>
-    <string name="lock_picture_instead">Use a picture</string>
-    <string name="live_wallpaper_instead">Live wallpaper</string>
-    <string name="lock_picture_set">The card picture is now your lock screen wallpaper.</string>
-    <string name="lock_picture_set_home_live">The card picture is now your lock screen wallpaper. Your home screen still has the live card wallpaper: choose your home screen picture again in the wallpaper settings.</string>
-    <string name="live_wallpaper_on_home">Your home screen still has the live card wallpaper (a plain background). Choose your home screen picture again: the app can\'t put the previous one back.</string>
-    <string name="lock_picture_refused">This device doesn\'t let apps change the lock screen picture.</string>
-    <string name="wallpaper_status_picture">A picture of the current card is your lock screen wallpaper. It changes with each card.</string>
-    <string name="lock_picture_tip">Card not showing on your lock screen? Turn off the lock screen features that change the picture by themselves (for example Magazine unlock or Glance). With a picture, the notification stays visible and cards follow each other.</string>
-    <string name="lock_picture_stop">Stop updating the picture</string>
+    <string name="setup_battery_detail">Background activity is restricted for this app, so the cards may stop coming. Set its battery usage to Optimized or Unrestricted.</string>
 
     <!-- Focus: Pass / Fail, nudges while the phone is in use, the app gate, snooze and pauses. -->
     <string name="pass">Pass</string>
     <string name="fail">Fail</string>
     <string name="done">Done</string>
-    <string name="not_now">Not now</string>
     <string name="minutes">%1$d min</string>
-    <string name="seconds">%1$d s</string>
 
     <string name="nudge_channel_name">Cards while you use your phone</string>
     <string name="nudge_channel_description">A card pops up every so often while the screen is on and unlocked. Never shown on the lock screen.</string>
@@ -211,8 +88,6 @@
     <string name="snooze_until_tomorrow">Until tomorrow</string>
     <string name="snooze">Snooze</string>
     <string name="bury">Bury</string>
-    <!-- An answer button with when the card comes back: "Pass · 4d". -->
-    <string name="answer_with_interval">%1$s · %2$s</string>
     <string name="snooze_15_minutes">15 min</string>
     <string name="snooze_3_hours">3 hours</string>
     <string name="monitor_pc_in_use">Your PC is in use: everything is paused.</string>
@@ -232,7 +107,6 @@
     </plurals>
 
     <string name="focus_title">Cards while you use your phone</string>
-    <string name="focus_change">Change</string>
     <string name="focus_choose">Choose</string>
     <string name="focus_setup">Finish setting up</string>
     <string name="focus_setup_restricted">If Android says a setting is restricted for this app: open the app\'s info page (long-press its icon, then App info), tap the three dots, then \"Allow restricted settings\", and come back.</string>
@@ -242,7 +116,7 @@
     <string name="focus_setup_overlay">Display over other apps</string>
     <string name="focus_setup_overlay_detail">Lets the gate and full-screen cards open over the app in front.</string>
     <string name="focus_setup_notifications">Notifications</string>
-    <string name="focus_setup_notifications_detail">Cards come as notifications.</string>
+    <string name="focus_setup_notifications_detail">For the monitor\'s notification, its Snooze buttons, and a card when it can\'t take the screen.</string>
 
     <string name="focus_snooze">Snooze</string>
     <string name="focus_snooze_detail">No cards for a while. Also on the monitor\'s notification and on each card.</string>
@@ -259,11 +133,7 @@
     <string name="focus_interval_default">Like other apps</string>
     <string name="focus_app_intervals">Own timing per app</string>
     <string name="focus_app_intervals_none">None. For example a card every 5 minutes on your biggest time wasters, or never on your maps app.</string>
-    <string name="focus_full_screen">Take over the screen</string>
-    <string name="focus_full_screen_detail">On: the card covers the app you\'re in until you answer or snooze it, and a video behind it pauses. Off: a pop-up notification instead; tap it to see the whole card.</string>
     <string name="focus_show_now">Show a card now</string>
-    <string name="focus_lifetime">Withdraw an untouched card after</string>
-    <string name="focus_lifetime_detail">%1$d seconds. It stays due and comes back with the next card.</string>
 
     <string name="focus_answers">Answer buttons</string>
     <string name="focus_pass_fail">Pass / Fail only</string>
@@ -286,7 +156,7 @@
 
     <string name="focus_pauses">When cards stay away</string>
     <string name="focus_bluetooth">While a Bluetooth device is connected</string>
-    <string name="focus_bluetooth_detail">Everything pauses: no cards, the gate is open, no reviews at set times. For example in the car or with headphones at work.</string>
+    <string name="focus_bluetooth_detail">Everything pauses: no cards, and the gate is open. For example in the car or with headphones at work.</string>
     <string name="focus_bluetooth_permission">Detect every Bluetooth device</string>
     <string name="focus_bluetooth_permission_detail">Without the \"Nearby devices\" permission, only Bluetooth audio (car, headphones, speakers) is detected, not watches or keyboards.</string>
     <string name="focus_dnd">During Do Not Disturb</string>
@@ -299,7 +169,6 @@
     <string name="focus_quiet_clear">Remove the quiet hours</string>
     <string name="focus_quiet_from">Quiet from</string>
     <string name="focus_quiet_to">Until</string>
-    <string name="focus_open">Cards while you use your phone</string>
     <string name="focus_pc">Your PC</string>
     <string name="focus_pc_pair">Pause while my PC is in use</string>
     <string name="focus_pc_pair_detail">With Micro Review Desktop, the Anki add-on, on your PC: cards and the gate pause for 5 minutes after you last use its mouse or keyboard.</string>
@@ -320,5 +189,67 @@
     <string name="focus_diagnostics">Diagnostics</string>
     <string name="focus_diagnostics_copy">Copy</string>
     <string name="focus_diagnostics_copied">Copied: paste it where you report the problem.</string>
-    <string name="focus_diagnostics_refresh">Refresh</string>
+
+    <!-- The look (Frutiger Aero, four themes). The kanji are decoration: the same in every language. -->
+    <string name="kanji_gate" translatable="false">門</string>
+    <string name="kanji_nudge" translatable="false">札</string>
+    <string name="kanji_session" translatable="false">続</string>
+    <string name="kanji_bury" translatable="false">埋</string>
+    <string name="kanji_answer" translatable="false">答</string>
+    <string name="kanji_snooze" translatable="false">休</string>
+    <string name="kanji_recorded" translatable="false">記録</string>
+    <string name="kanji_done" translatable="false">済</string>
+    <string name="kanji_sync" translatable="false">同期</string>
+    <string name="otsukaresama" translatable="false">お疲れ様！</string>
+    <string name="card_nudge_title">A card for you</string>
+    <string name="kanji_order" translatable="false">順</string>
+    <string name="kanji_decks" translatable="false">束</string>
+    <string name="kanji_theme" translatable="false">彩</string>
+    <string name="kanji_logo" translatable="false">復</string>
+    <string name="kanji_now" translatable="false">今</string>
+    <string name="kanji_resume" translatable="false">再</string>
+    <string name="kanji_pause" translatable="false">止</string>
+    <string name="kanji_off" translatable="false">眠</string>
+    <string name="kanji_setup" translatable="false">設</string>
+    <string name="kanji_next" translatable="false">次</string>
+    <string name="kanji_problem" translatable="false">困</string>
+    <string name="home_title">Micro Review</string>
+    <string name="home_subtitle" translatable="false">マイクロ復習 · %1$s %2$s</string>
+    <plurals name="home_due">
+        <item quantity="one">%1$d card due</item>
+        <item quantity="other">%1$d cards due</item>
+    </plurals>
+    <plurals name="home_gated_apps">
+        <item quantity="one">%1$d gated app</item>
+        <item quantity="other">%1$d gated apps</item>
+    </plurals>
+    <string name="home_nudges_on">Nudges on</string>
+    <string name="home_pc_paired">PC paired</string>
+    <string name="home_answers_waiting">Answers to sync</string>
+    <string name="home_card_now">Card now</string>
+    <string name="home_snooze">Snooze %1$d min</string>
+    <string name="home_snoozed">Snoozed until %1$s</string>
+    <string name="home_snoozed_detail">No cards until then.</string>
+    <string name="home_paused">Paused</string>
+    <string name="home_off">Cards are off</string>
+    <string name="home_off_detail">Turn on nudges or the app gate in Settings.</string>
+    <string name="home_next_card">Next card soon</string>
+    <string name="home_on">On</string>
+    <string name="home_minutes_short">min</string>
+    <string name="home_next_up">Next up</string>
+    <string name="count_new">%1$d new</string>
+    <string name="count_learn">%1$d learning</string>
+    <string name="count_review">%1$d to review</string>
+    <string name="theme_title">Theme</string>
+    <string name="theme_detail">Four looks from the glossy years.</string>
+    <string name="kanji_pc" translatable="false">机</string>
+    <string name="kanji_about" translatable="false">情</string>
+    <string name="settings_subtitle">Cards, the gate, pauses and the look</string>
+    <string name="settings_back">Back</string>
+    <string name="settings_add_app">Add an app</string>
+    <string name="settings_open">Open</string>
+    <string name="settings_show">Show</string>
+    <string name="settings_hide">Hide</string>
+    <string name="settings_search">Search apps</string>
+    <string name="settings_diagnostics_detail">What the monitor sees and did, to tell why a card or the gate didn\'t come.</string>
 </resources>

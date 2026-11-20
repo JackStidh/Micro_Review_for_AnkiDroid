@@ -7,10 +7,9 @@ import android.content.SharedPreferences
  * Measures how long the displayed card was looked at before being answered: AnkiDroid records it with the review
  * (`ReviewInfo.TIME_TAKEN`, capped by the deck's "Maximum answer seconds").
  *
- * The timer starts when the card is seen: with the lock screen wallpaper, when the screen turns on on the lock
- * screen, or when a new card is shown while it runs. It is cleared when the card is no longer seen without an
- * answer (screen off, unlock). Without the wallpaper there are no screen events: it starts when the card
- * notification is posted. It belongs to one card, so a timer left from another card is never used.
+ * The timer starts when the card is seen: when the card screen shows it ([FocusCardController]), or when a nudge's
+ * notification is posted. It is cleared when the card is no longer seen without an answer (screen off, card
+ * screen closed). It belongs to one card, so a timer left from another card is never used.
  */
 object ReviewTimer {
     private const val PREFS = "com.ankidroid.companion.review_timer"
@@ -24,30 +23,22 @@ object ReviewTimer {
     fun timeTaken(started: Started?, card: CardSync.CardKey, now: Long): Long =
         if (started != null && started.card == card) (now - started.startedAt).coerceAtLeast(0) else 0
 
-    /**
-     * Whether a newly shown card restarts the timer: always without the wallpaper (posting is all we know), and with
-     * it only while the timer runs (screen on, lock screen shown); otherwise the next screen on starts it.
-     */
-    fun startsOnCardShown(wallpaperActive: Boolean, running: Boolean): Boolean = !wallpaperActive || running
-
     /** The card is seen: starts the timer, unless it already runs for this card. */
     fun onCardSeen(context: Context, card: CardSync.CardKey, now: Long = System.currentTimeMillis()) {
         if (load(context)?.card != card) start(context, card, now)
     }
 
-    /** The user explicitly starts reviewing [card] (Start in a scheduled review): the timer starts over now. */
+    /** [card] is shown anew (a card screen opens): the timer starts over now. */
     fun restart(context: Context, card: CardSync.CardKey, now: Long = System.currentTimeMillis()) {
         start(context, card, now)
     }
 
-    /** A new card was shown in place of the previous one. */
+    /** A new card was posted in a nudge's notification in place of the previous one. */
     fun onCardShown(context: Context, card: CardSync.CardKey, now: Long = System.currentTimeMillis()) {
-        if (startsOnCardShown(CardWallpaperService.isActive(context), running = load(context) != null)) {
-            start(context, card, now)
-        }
+        start(context, card, now)
     }
 
-    /** The card is no longer seen and wasn't answered (screen off, unlock): the time spent on it doesn't count. */
+    /** The card is no longer seen and wasn't answered (screen off, closed): the time spent on it doesn't count. */
     fun clear(context: Context) {
         prefs(context).edit().clear().apply()
     }

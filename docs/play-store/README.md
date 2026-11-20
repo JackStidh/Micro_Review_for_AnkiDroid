@@ -10,59 +10,7 @@ Everything needed to publish Micro Review for AnkiDroid on the Play Store: the l
 
 ## Generating the assets
 
-The screenshots, GIFs and icon are generated **on demand only**, by a script (nothing generates them in CI or during a build):
-
-```powershell
-.\scripts\store-assets.ps1                         # lists the emulators and asks which one to use
-.\scripts\store-assets.ps1 -Device Pixel_9a         # this emulator, started first if it isn't running
-.\scripts\store-assets.ps1 -Device emulator-5554 -SkipBuild -OutputDir C:\temp\store
-.\scripts\store-assets.ps1 -ConvertOnly             # convert the last captures again, without the emulator
-```
-
-Also available in VS Code: task "Android: generate store assets" (it asks for the emulator).
-
-Without `-Device`, the script lists every emulator created in Android Studio, running or not, with its status, whether AnkiDroid is installed (known once it runs) and its Android version, then asks for a number or a name:
-
-```
-    #   Emulator               Status                   AnkiDroid  Android
-    1   Matrix_API31           stopped                  -          Android 12 (API 31), Google Play
-    2   Matrix_API34           running (emulator-5556)  no         Android 14 (API 34), Google APIs
-    3   Pixel_9a               running (emulator-5554)  yes        Android 16 (API 36), Google Play
-```
-
-A stopped emulator is started first, and the script goes on once Android has booted, reporting the progress every 15 s. It stops with the end of the emulator's output (full output in `%TEMP%\emulator-<name>.log`) if the emulator exits while starting (crash, window closed), disappears from adb, or hasn't booted after 5 minutes. An emulator started by the script is shut down at the end, unless `-KeepEmulator`.
-
-### Before the first run
-
-- **An emulator, never a phone**: the script taps through the screens, locks and unlocks, and changes the decks selected in the app. Use an emulator with Android 14 or later (the card wallpaper must be settable on the lock screen only), a Google Play system image (for the Pixel launcher, to add the widget), and no PIN.
-- **AnkiDroid installed** on it, its collection created, and its API enabled (AnkiDroid: Settings › Advanced › Enable AnkiDroid API).
-- **ffmpeg**: on the PATH (`winget install Gyan.FFmpeg`), or through Python (`pip install imageio-ffmpeg`).
-- **The look**: the screenshots show the app as it is set up on the emulator: the lock screen style (background color or picture, text), the review settings and the decks listed on the main screen. Use a picture you are allowed to publish, keep the default review settings ("How to review": notification), and remove decks you don't want to show.
-
-### What it does
-
-1. Builds and installs the app and the test APK, grants the AnkiDroid and notification permissions.
-2. Runs `StoreAssetsSetup` (in `app/src/androidTest`, skipped in the device tests and in CI): empties and fills again the **"World capitals"** demo deck in AnkiDroid, so its 12 cards are new, selects it in the app, and renders the icon.
-3. Sets the card wallpaper on the lock screen if needed (reboots the emulator if Android didn't start it again after the reinstall), adds the Card widget to the home screen if needed (resized to the full width), and tidies the screen: status bar demo mode (9:30, full battery), system notifications snoozed for an hour, touches shown, screen kept on.
-4. Takes the screenshots, records the three flows, converts them, and puts the emulator's settings back.
-5. Copies the three GIFs to `.github/`, where the project README shows them (`-NoReadmeGifs` to skip it). Commit them to update the README.
-
-Each run answers about 4 demo cards, and waits up to a few minutes for the scheduled review notification (an inexact alarm). The demo deck counts toward AnkiDroid's daily limit of new cards (20 by default): after about 5 runs on the same day, raise the deck's limit in AnkiDroid or wait for the next day.
-
-### Output (default: `build/store-assets`, not committed)
-
-| Path | Content |
-|---|---|
-| `screenshots/1-main.png` … `5-widget.png` | Main screen, Settings, lock screen, notification with the answer buttons, widget with the answer buttons. Cropped to 1080 × 2160 (the Play Store refuses images longer than twice their width) |
-| `gif/lockscreen.gif` | Locked phone with the card (one card per unlock, from the notification) → expand the notification → Show answer → Easy → "Next card at your next unlock" → unlock |
-| `gif/notification.gif` | Unlocked, "Reviews at set times" at the next minute: the notification arrives (the wait is cut, 1 s kept) → Start → Show answer → Easy |
-| `gif/widget.gif` | See-through widget: Start review → Show answer → Good → next card → Show answer → Easy |
-| `icon-512.png` | Listing icon, 512 × 512, full square (the Play Store rounds the corners) |
-| `raw/` | Full-size screenshots and the screen recordings |
-
-The GIFs are 360 px wide, for the README or a website: **the Play Store doesn't accept GIFs**. On the listing, the flows are shown by the screenshots, and optionally by a YouTube video made from the recordings in `raw/`.
-
-The lock screen shows "Charged" because the script simulates a charger to keep the screen on; the script blanks it in the lock screen GIF and screenshot.
+The Focus build has no store asset generator: the lock screen, notification and widget features it captured were removed in the Aero redesign, along with `scripts/store-assets.ps1` and `StoreAssetsSetup`. The theme screenshots come from `DesignPreviewTest` (`.github/workflows/design-preview.yml`).
 
 ## Listing assets
 

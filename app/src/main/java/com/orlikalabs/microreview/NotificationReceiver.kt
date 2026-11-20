@@ -7,8 +7,8 @@ import android.util.Log
 import kotlin.concurrent.thread
 
 /**
- * Handles the notification buttons ("Show answer", "Previous", "Next" and the answer buttons, of the lock screen notification and of
- * the scheduled review) and the scheduled review alarm.
+ * Handles the buttons of a nudge shown as a notification ("Show answer", "Previous", "Next", the answer buttons,
+ * Snooze) and of the monitor's notification.
  */
 class NotificationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
@@ -20,11 +20,6 @@ class NotificationReceiver : BroadcastReceiver() {
             Notifications.ACTION_SHOW_ANSWER -> CardReview::revealAnswer
             Notifications.ACTION_PREVIOUS_PAGE -> CardReview::showPreviousPage
             Notifications.ACTION_NEXT_PAGE -> CardReview::showNextPage
-            ScheduledReview.ACTION_ALARM -> ScheduledReview::onAlarm
-            ScheduledReview.ACTION_START -> ScheduledReview::start
-            ScheduledReview.ACTION_SHOW_ANSWER -> ScheduledReview::revealAnswer
-            ScheduledReview.ACTION_PREVIOUS_PAGE -> ScheduledReview::showPreviousPage
-            ScheduledReview.ACTION_NEXT_PAGE -> ScheduledReview::showNextPage
             NudgeSession.ACTION_SNOOZE -> NudgeSession::snoozeFromCard
             NudgeSession.ACTION_DISMISSED -> NudgeSession::withdraw
             else -> FocusActions.task(action) ?: answerTask(action, intent) ?: return
@@ -44,10 +39,9 @@ class NotificationReceiver : BroadcastReceiver() {
         }
     }
 
-    /** An answer button of the lock screen notification or of the scheduled review, for the card in [intent]. */
+    /** An answer button of the nudge's notification, for the card in [intent]. */
     private fun answerTask(action: String, intent: Intent): ((Context) -> Unit)? {
-        val scheduled = action.startsWith(ScheduledReview.ACTION_BUTTON_PREFIX)
-        val prefix = if (scheduled) ScheduledReview.ACTION_BUTTON_PREFIX else Notifications.ACTION_BUTTON_PREFIX
+        val prefix = Notifications.ACTION_BUTTON_PREFIX
         if (!action.startsWith(prefix)) return null
         val button = action.removePrefix(prefix).toIntOrNull()?.takeIf { it in AnswerButtons.AGAIN..AnswerButtons.EASY } ?: return null
         val card = CardReview.answeredCard(intent)
@@ -55,10 +49,6 @@ class NotificationReceiver : BroadcastReceiver() {
             Log.w("Notifications", "$action without its card, ignored")
             return null
         }
-        return if (scheduled) {
-            { c -> ScheduledReview.answer(c, button, card) }
-        } else {
-            { c -> CardReview.answer(c, button, card) }
-        }
+        return { c -> CardReview.answer(c, button, card) }
     }
 }
