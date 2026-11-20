@@ -82,8 +82,8 @@ class SettingsDialog(QDialog):
         form.addRow("Each time", self.count)
         self.skips = self._spin(0, 10, "skips_per_day", " per day")
         form.addRow("Emergency skips", self.skips)
-        self.idle = self._spin(15, 900, "idle_after_seconds", " s")
-        self.idle.setToolTip("No mouse or keyboard input for this long: the PC isn't in use, the time doesn't count.")
+        self.idle = self._spin(10, 300, "input_within_seconds", " s")
+        self.idle.setToolTip("No mouse or keyboard input for this long: you're away, the time doesn't count and no cards come.")
         form.addRow("Away after", self.idle)
         self.decks = QListWidget()
         self.decks.setMinimumHeight(120)
@@ -102,7 +102,7 @@ class SettingsDialog(QDialog):
         self.pass_fail = self._check(box, "Pass / Fail only (Pass = Good, Fail = Again)", "pass_fail_only")
         self.intervals = self._check(box, "Show when the card comes back (Pass · 4d)", "show_intervals")
         self.audio = self._check(box, "Play the card's audio", "play_audio")
-        self.sync = self._check(box, "Sync with AnkiWeb after the cards", "sync_after_cards")
+        self.sync = self._check(box, "Sync with AnkiWeb before and after the cards", "sync_after_cards")
         form.addRow(box)
         layout.addWidget(cards)
 
@@ -192,7 +192,7 @@ class SettingsDialog(QDialog):
         cfg["interval_minutes"] = self.interval.value()
         cfg["cards_per_prompt"] = self.count.value()
         cfg["skips_per_day"] = self.skips.value()
-        cfg["idle_after_seconds"] = self.idle.value()
+        cfg["input_within_seconds"] = self.idle.value()
         cfg["decks"] = [self.decks.item(i).text() for i in range(self.decks.count())
                         if self.decks.item(i).checkState() == Qt.CheckState.Checked]
         cfg["pass_fail_only"] = self.pass_fail.isChecked()

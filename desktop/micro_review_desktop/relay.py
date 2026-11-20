@@ -1,5 +1,5 @@
-"""Telling the phone that the PC is in use, through ntfy.sh (a free public publish/subscribe relay), and whether
-the PC is online. Both block: run them off the main thread.
+"""Telling the phone that the PC is in use, and that it synced, through ntfy.sh (a free public publish/subscribe
+relay), and whether the PC is online. Both block: run them off the main thread.
 """
 from __future__ import annotations
 
@@ -22,9 +22,18 @@ def is_online(timeout: float = 4.0) -> bool:
 
 def post_pause(topic: str, seconds: int, timeout: float = 8.0) -> None:
     """The phone stays paused `seconds` from now. Raises on failure."""
+    _post(topic, str(int(seconds)), timeout)
+
+
+def post_synced(topic: str, timeout: float = 8.0) -> None:
+    """The PC's answers are on AnkiWeb: the phone syncs to get them (on its sync topic). Raises on failure."""
+    _post(topic, "synced", timeout)
+
+
+def _post(topic: str, message: str, timeout: float) -> None:
     request = urllib.request.Request(
         "%s/%s" % (RELAY, topic),
-        data=str(int(seconds)).encode("ascii"),
+        data=message.encode("ascii"),
         method="POST",
         headers={
             # Silent if anyone ever subscribes to the topic in the ntfy app.

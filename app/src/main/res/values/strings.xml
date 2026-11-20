@@ -312,9 +312,9 @@
     <string name="focus_pc_unpair">Unpair</string>
     <string name="focus_ankiweb">AnkiWeb</string>
     <string name="focus_ankiweb_sync">Sync AnkiDroid</string>
-    <string name="focus_ankiweb_pending">Answers wait to be synced: AnkiDroid is asked to sync when your phone is plugged in and unlocked (at most every 15 min), or now. Asked last: %1$s.</string>
-    <string name="focus_ankiweb_synced">Nothing waiting. Asked AnkiDroid last: %1$s. Syncs happen while your phone is plugged in, or with Sync now.</string>
-    <string name="syncing_cover">Syncing your answers with AnkiWeb…</string>
+    <string name="focus_ankiweb_pending">Answers wait to be synced: AnkiDroid is asked to sync in a moment, or now. Asked last: %1$s.</string>
+    <string name="focus_ankiweb_synced">Nothing waiting. Asked AnkiDroid last: %1$s. Syncs happen after each set of cards, and when your PC has synced its answers.</string>
+    <string name="syncing_cover">Syncing with AnkiWeb…</string>
     <string name="focus_ankiweb_never">never</string>
     <string name="focus_ankiweb_sync_now">Sync now</string>
     <string name="focus_diagnostics">Diagnostics</string>

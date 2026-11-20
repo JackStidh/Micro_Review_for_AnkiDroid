@@ -137,6 +137,8 @@ class UsageMonitorService : Service() {
         polling = true
         MonitorStatus.polling = true
         lastTick = SystemClock.elapsedRealtime()
+        // Right after unlocking: the PC may have synced answers meanwhile.
+        lastSyncCheck = 0L
         // The app in front is looked at again: the user may be back in a gated app without its pass.
         evaluated = null
         handler.removeCallbacks(pollTask)
@@ -202,13 +204,16 @@ class UsageMonitorService : Service() {
     }
 
     /**
-     * Plugged in, unlocked, answers waiting: AnkiDroid is asked to sync under a short cover ([CardOverlay.showSyncCover]).
-     * Looked at every half minute, not every second.
+     * In use, no card screen open: when the PC synced its answers since the phone's last sync (read from the relay),
+     * or answers wait here, AnkiDroid is asked to sync under a short cover ([CardOverlay.showSyncCover]). Looked at
+     * right after unlocking, then every half minute; the relay is read at most every 2 minutes.
      */
     private fun syncStep(now: Long) {
-        if (now - lastSyncCheck < SYNC_CHECK_MS) return
+        if (lastSyncCheck != 0L && now - lastSyncCheck < SYNC_CHECK_MS) return
         lastSyncCheck = now
-        if (!CardOverlay.isShowing && !FocusReviewActivity.isShown && AnkiSync.isDue(this)) CardOverlay.showSyncCover(this)
+        if (CardOverlay.isShowing || FocusReviewActivity.isShown) return
+        PcActivity.refreshPcSync(this, PC_SYNC_FRESH_MS)
+        if (AnkiSync.isDueInUse(this)) CardOverlay.showSyncCover(this)
     }
 
     private fun nudgeStep(elapsed: Long) {
@@ -340,6 +345,7 @@ class UsageMonitorService : Service() {
         private const val FIRST_LOOKBACK_MS = 30 * 60_000L
         private const val DUE_CHECK_INTERVAL_MS = 5 * 60_000L
         private const val SYNC_CHECK_MS = 30_000L
+        private const val PC_SYNC_FRESH_MS = 2 * 60_000L
 
         /** How old the PC's state may be when a gated app opens, and while a card waits ([PcActivity]). */
         private const val PC_FRESH_FOR_GATE_MS = 20_000L

@@ -7,7 +7,7 @@
     "play_audio": false,
     "skips_per_day": 1,
     "require_internet": true,
-    "idle_after_seconds": 120,
+    "input_within_seconds": 30,
     "pause_phone_while_in_use": true,
     "phone_pause_minutes": 5,
     "gaming_shutoff": true,

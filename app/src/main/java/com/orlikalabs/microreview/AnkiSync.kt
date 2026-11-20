@@ -3,9 +3,7 @@ package com.orlikalabs.microreview
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.net.ConnectivityManager
-import android.os.BatteryManager
 import android.net.NetworkCapabilities
 
 /**
@@ -17,17 +15,19 @@ import android.net.NetworkCapabilities
  * background and closes. It ignores requests less than 2 minutes apart, and syncs on a metered network only if its
  * own setting allows it.
  *
- * Only while the phone is plugged in, at most every 15 minutes: one sync when it charges (typically at night) rather
- * than syncs all day; "Sync now" in the settings any time.
+ * Right after each set of cards, so the PC doesn't show a card already reviewed here; and when the PC (Micro Review
+ * Desktop) says on the relay that it synced its answers, before the next card here ([AnkiSyncRules]). "Sync now" in
+ * the settings any time.
  *
  * Starting AnkiDroid from the background is only allowed while one of this app's windows is visible: the request is
  * made as the card overlay closes ([CardOverlay]), or under a short "Syncing" cover ([CardOverlay.showSyncCover])
- * when the plugged-in phone is unlocked, both fading out over AnkiDroid's moment in front; or from this app's screens.
+ * while the phone is in use, both fading out over AnkiDroid's moment in front; or from this app's screens.
  */
 object AnkiSync {
     private const val PREFS = "com.orlikalabs.microreview.anki_sync"
     private const val KEY_PENDING = "pending"
     private const val KEY_REQUESTED_AT = "requested_at"
+    private const val KEY_PC_SYNCED_AT = "pc_synced_at"
     const val ACTION_DO_SYNC = "com.ichi2.anki.DO_SYNC"
     private const val ANKIDROID = "com.ichi2.anki"
 
@@ -40,15 +40,20 @@ object AnkiSync {
 
     fun requestedAt(context: Context): Long = prefs(context).getLong(KEY_REQUESTED_AT, 0)
 
-    /** Whether to ask now ([AnkiSyncRules.due]: answers waiting, plugged in, not asked lately), the phone being online. */
-    fun isDue(context: Context, now: Long = System.currentTimeMillis()): Boolean =
-        AnkiSyncRules.due(isPending(context), requestedAt(context), now, isPluggedIn(context)) && isOnline(context)
+    /** When the PC last said it synced its answers (epoch milliseconds, relay time), 0 if never. */
+    fun pcSyncedAt(context: Context): Long = prefs(context).getLong(KEY_PC_SYNCED_AT, 0)
 
-    /** Whether the phone is on a charger (or a computer's USB, or a wireless charger). */
-    fun isPluggedIn(context: Context): Boolean {
-        val battery = context.applicationContext.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return false
-        return battery.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
+    fun setPcSyncedAt(context: Context, at: Long) {
+        if (at > pcSyncedAt(context)) prefs(context).edit().putLong(KEY_PC_SYNCED_AT, at).apply()
     }
+
+    /** As a card screen closes ([AnkiSyncRules.dueAfterCards]), the phone being online. */
+    fun isDueAfterCards(context: Context, now: Long = System.currentTimeMillis()): Boolean =
+        AnkiSyncRules.dueAfterCards(isPending(context), requestedAt(context), now) && isOnline(context)
+
+    /** While the phone is in use ([AnkiSyncRules.dueInUse]), the phone being online. */
+    fun isDueInUse(context: Context, now: Long = System.currentTimeMillis()): Boolean =
+        AnkiSyncRules.dueInUse(isPending(context), requestedAt(context), now, pcSyncedAt(context)) && isOnline(context)
 
     /** Whether AnkiDroid in front now is the moment that follows a request (not the user opening it). */
     fun isFlash(context: Context, now: Long = System.currentTimeMillis()): Boolean =

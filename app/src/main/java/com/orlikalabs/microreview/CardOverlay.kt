@@ -74,14 +74,14 @@ object CardOverlay {
     }
 
     /**
-     * A short full-screen "Syncing" cover, to ask AnkiDroid to sync ([AnkiSync]) when the plugged-in phone is in use
-     * and answers wait: Android lets this app start AnkiDroid while one of its windows is visible, and the cover hides
+     * A short full-screen "Syncing" cover, to ask AnkiDroid to sync ([AnkiSync]) while the phone is in use, when the
+     * PC synced its answers or answers wait here: Android lets this app start AnkiDroid while one of its windows is visible, and the cover hides
      * AnkiDroid's moment in front, then fades out. From any thread; nothing if a card is shown (its close syncs).
      */
     fun showSyncCover(context: Context) {
         val appContext = context.applicationContext
         main.post {
-            if (isShowing || syncCoverShown || !FocusState.canOpenOverApps(appContext) || !AnkiSync.isDue(appContext)) return@post
+            if (isShowing || syncCoverShown || !FocusState.canOpenOverApps(appContext) || !AnkiSync.isDueInUse(appContext)) return@post
             val themed = ContextThemeWrapper(appContext, R.style.Theme_AnkiNotifications)
             val label = android.widget.TextView(themed).apply {
                 setText(R.string.syncing_cover)
@@ -108,7 +108,7 @@ object CardOverlay {
             syncCoverShown = true
             // Once the cover is drawn, so that it is visible when AnkiDroid is started.
             frame.post {
-                val asked = AnkiSync.request(appContext, "plugged in")
+                val asked = AnkiSync.request(appContext, if (AnkiSync.isPending(appContext)) "answers waiting" else "the PC synced")
                 frame.animate().setStartDelay(if (asked) SYNC_HOLD_MS else 0L).setDuration(SYNC_FADE_MS).alpha(0f)
                     .withEndAction {
                         remove(appContext, frame)
@@ -200,7 +200,7 @@ object CardOverlay {
         isShowing = false
         shownMode = null
         shownApp = null
-        val syncing = closedByUser && AnkiSync.isDue(context) && AnkiSync.request(context, "after cards")
+        val syncing = closedByUser && AnkiSync.isDueAfterCards(context) && AnkiSync.request(context, "after cards")
         if (syncing) {
             // AnkiDroid shows its deck list for a moment: this window stays over it, then fades out.
             shown.isEnabled = false

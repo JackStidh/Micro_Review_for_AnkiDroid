@@ -6,7 +6,8 @@ package com.orlikalabs.microreview
  *
  * The PC posts to the topic how many seconds the phone should stay paused from the moment the relay received the
  * message ("420" while it is used, the remainder when its use stops, "0" to resume). The phone reads the topic's
- * recent messages and follows the latest ([PcActivity]).
+ * recent messages and follows the latest ([PcActivity]). After syncing its answers with AnkiWeb, the PC also posts
+ * to a second topic ([syncTopic]), for the phone to sync too before its next card.
  */
 object PcPairing {
     /** Codes are 16 letters and digits, shown as four groups ("k3p9-x2mq-7rtv-w8de"). */
@@ -25,6 +26,15 @@ object PcPairing {
 
     /** The relay topic of a [normalize]d code. */
     fun topic(code: String): String = "mrf-$code"
+
+    /** The topic where the PC says it synced its answers (Micro Review Desktop's rules.sync_topic). */
+    fun syncTopic(code: String): String = topic(code) + "-sync"
+
+    /** When the relay received the message on one line of its JSON stream (epoch milliseconds), 0 if not a message. */
+    fun messageTime(line: String): Long {
+        if (!EVENT_MESSAGE.containsMatchIn(line)) return 0
+        return (TIME.find(line)?.groupValues?.get(1)?.toLongOrNull() ?: return 0) * 1000
+    }
 
     /**
      * Until when (epoch milliseconds) one line of the relay's JSON stream says the phone is paused, or 0 if the line

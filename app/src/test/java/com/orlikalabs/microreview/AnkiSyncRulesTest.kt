@@ -8,25 +8,35 @@ class AnkiSyncRulesTest {
     private val minute = 60_000L
 
     @Test
-    fun nothingToSyncNoRequest() {
-        assertFalse(AnkiSyncRules.due(pending = false, requestedAt = 0, now = 100 * minute, pluggedIn = true))
+    fun afterCardsOnlyWithAnswers() {
+        assertTrue(AnkiSyncRules.dueAfterCards(pending = true, requestedAt = 0, now = 100 * minute))
+        assertFalse(AnkiSyncRules.dueAfterCards(pending = false, requestedAt = 0, now = 100 * minute))
     }
 
     @Test
-    fun answersWaitingAskOnceInAWhile() {
-        assertTrue(AnkiSyncRules.due(pending = true, requestedAt = 0, now = 100 * minute, pluggedIn = true))
-        assertFalse(AnkiSyncRules.due(pending = true, requestedAt = 90 * minute, now = 100 * minute, pluggedIn = true))
-        assertTrue(AnkiSyncRules.due(pending = true, requestedAt = 85 * minute, now = 100 * minute, pluggedIn = true))
+    fun notTwiceWithinAnkiDroidsTwoMinutes() {
+        assertFalse(AnkiSyncRules.dueAfterCards(pending = true, requestedAt = 99 * minute, now = 100 * minute))
+        assertTrue(AnkiSyncRules.dueAfterCards(pending = true, requestedAt = 98 * minute, now = 100 * minute))
     }
 
     @Test
-    fun onlyWhilePluggedIn() {
-        assertFalse(AnkiSyncRules.due(pending = true, requestedAt = 0, now = 100 * minute, pluggedIn = false))
+    fun theirAnswersAfterThePcSynced() {
+        // The PC synced after the phone's last sync: get its answers.
+        assertTrue(AnkiSyncRules.dueInUse(pending = false, requestedAt = 10 * minute, now = 100 * minute, pcSyncedAt = 50 * minute))
+        // Already got them.
+        assertFalse(AnkiSyncRules.dueInUse(pending = false, requestedAt = 60 * minute, now = 100 * minute, pcSyncedAt = 50 * minute))
+        assertFalse(AnkiSyncRules.dueInUse(pending = false, requestedAt = 10 * minute, now = 100 * minute, pcSyncedAt = 0))
+    }
+
+    @Test
+    fun leftOverAnswersGoWhileInUse() {
+        assertTrue(AnkiSyncRules.dueInUse(pending = true, requestedAt = 10 * minute, now = 100 * minute, pcSyncedAt = 0))
+        assertFalse(AnkiSyncRules.dueInUse(pending = true, requestedAt = 99 * minute, now = 100 * minute, pcSyncedAt = 0))
     }
 
     @Test
     fun aClockSetBackDoesntBlockForever() {
-        assertTrue(AnkiSyncRules.due(pending = true, requestedAt = 200 * minute, now = 100 * minute, pluggedIn = true))
+        assertTrue(AnkiSyncRules.dueAfterCards(pending = true, requestedAt = 200 * minute, now = 100 * minute))
     }
 
     @Test

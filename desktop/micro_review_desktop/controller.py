@@ -1,8 +1,11 @@
 """Micro Review Desktop: every so often, a few cards over whatever you're doing on the PC.
 
-Runs inside Anki: in the tray, started with Windows. Counts the time the PC is actually used; after the interval,
-asks for a few cards (prompt.py) unless a game is running, Anki is snoozed or the PC is offline. While the PC is
-used, tells the phone (Micro Review Focus) to pause, through the relay (relay.py).
+Runs inside Anki: in the tray, started with Windows. Counts the time the PC is actually used (input in the last 30
+seconds); after the interval, asks for a few cards (prompt.py) unless a game is running, Anki is snoozed or the PC is
+offline. While the PC is used, tells the phone (Micro Review Focus) to pause, through the relay (relay.py).
+
+Syncs with AnkiWeb before the cards (the phone's latest answers, so a card isn't reviewed twice) and after them, in
+the background, without Anki's sync window; after a sync it tells the phone, which then syncs too.
 """
 from __future__ import annotations
 
@@ -20,6 +23,8 @@ ADDON = __name__.split(".")[0]
 TICK_MS = 5000
 ONLINE_CHECK_SECONDS = 60
 GAME_CHECK_SECONDS = 30
+# Cards shortly after a sync don't need another one first.
+PULL_MAX_AGE_SECONDS = 60
 
 DEFAULTS = {
     "interval_minutes": 20,
@@ -30,7 +35,7 @@ DEFAULTS = {
     "play_audio": False,
     "skips_per_day": 1,
     "require_internet": True,
-    "idle_after_seconds": 120,
+    "input_within_seconds": 30,
     "pause_phone_while_in_use": True,
     "phone_pause_minutes": 5,
     "gaming_shutoff": True,
@@ -59,6 +64,11 @@ class Controller:
         self.game_checked = 0.0
         self.phone_busy = False
         self.phone_retry_at = 0.0
+        self.syncing = False
+        self.sync_again = None  # type: Optional[bool]
+        self.synced_at = -1e9
+        self.pull_tried_at = -1e9
+        self.own_sync_finishing = False
         self.allow_quit = False
         self.hidden_once = False
         self.last_tick = time.monotonic()
@@ -73,6 +83,8 @@ class Controller:
         return config
 
     def save_cfg(self, config: Dict[str, Any]) -> None:
+        config = dict(config)
+        config.pop("idle_after_seconds", None)  # Replaced by input_within_seconds.
         self.mw.addonManager.writeConfig(ADDON, config)
         self.apply_autostart()
 
@@ -137,6 +149,9 @@ class Controller:
         self.phone = rules.PhonePause(pause_seconds=cfg["phone_pause_minutes"] * 60)
         self.pairing_code()
         self._setup_tray()
+        # With Anki's window hidden in the tray, a closing card window is the last one open: Qt would then quit Anki.
+        # Anki quits through its own path (File › Exit, the tray's Quit), which doesn't rely on this.
+        self.mw.app.setQuitOnLastWindowClosed(False)
         self.apply_autostart()
         self.last_tick = time.monotonic()
         self.timer.start(TICK_MS)
@@ -147,6 +162,7 @@ class Controller:
 
     def stop(self) -> None:
         self.timer.stop()
+        self.mw.app.setQuitOnLastWindowClosed(True)
         # The phone shouldn't stay paused for a PC that is going away.
         seconds = self.phone.final(windows.idle_seconds())
         topic = self._phone_topic()
@@ -172,11 +188,11 @@ class Controller:
     def _tick(self, now: float, elapsed: float) -> None:
         cfg = self.cfg()
         idle = windows.idle_seconds()
-        active = idle < cfg["idle_after_seconds"]
+        active = idle < cfg["input_within_seconds"]
         self._check_online(now)
         self._tell_phone(idle)
         self._update_tray()
-        if self.prompt is not None or self.mw.col is None:
+        if self.prompt is not None or self.mw.col is None or self.syncing:
             return
         if time.time() < self.snoozed_until():
             return
@@ -195,6 +211,12 @@ class Controller:
                 return
             if self.game:
                 return
+        if rules.wants_pull(self._logged_in(), cfg["sync_after_cards"], now, self.synced_at, self.pull_tried_at,
+                            PULL_MAX_AGE_SECONDS) and self._can_sync_quietly():
+            # The phone's latest answers first; the cards come at a next tick, if you're still there.
+            self.pull_tried_at = now
+            self.sync_quietly("before cards", tell_phone=False)
+            return
         self.show_prompt()
 
     def _studying_in_anki(self) -> bool:
@@ -297,15 +319,110 @@ class Controller:
             except Exception:
                 pass
         if answered and self.cfg()["sync_after_cards"]:
-            QTimer.singleShot(1500, self._sync)
+            QTimer.singleShot(1500, lambda: self.sync_quietly("after cards", tell_phone=True))
         self._update_tray()
 
-    def _sync(self) -> None:
+    # Syncing
+
+    def _logged_in(self) -> bool:
         try:
-            if self.mw.pm.sync_auth() and self.prompt is None:
-                self.mw.on_sync_button_clicked()
-        except Exception as error:
-            store.log("sync failed: %r" % error)
+            return bool(self.mw.pm.sync_auth())
+        except Exception:
+            return False
+
+    def _can_sync_quietly(self) -> bool:
+        """Anki 2.1.66 and later sync collection and media in one backend call (older ones: Anki's own sync)."""
+        try:
+            import inspect
+
+            return len(inspect.signature(self.mw.col.sync_collection).parameters) >= 2
+        except Exception:
+            return False
+
+    def sync_quietly(self, reason: str, tell_phone: bool) -> None:
+        """Syncs with AnkiWeb in the background: no sync window, nothing comes to the front.
+
+        A full sync (asked for by AnkiWeb after a note type change, for example) isn't done here: it needs a choice,
+        so it's left to Anki's Sync button, with a message in the tray. `tell_phone`: the PC's answers are new, the
+        phone syncs to get them.
+        """
+        if self.mw.col is None or not self._logged_in():
+            return
+        if self.syncing:
+            self.sync_again = bool(self.sync_again) or tell_phone
+            return
+        if not self._can_sync_quietly():
+            if self.prompt is None:
+                try:
+                    self.mw.on_sync_button_clicked()
+                except Exception as error:
+                    store.log("sync failed: %r" % error)
+            return
+        auth = self.mw.pm.sync_auth()
+        try:
+            media = bool(self.mw.pm.media_syncing_enabled())
+        except Exception:
+            media = False
+        col = self.mw.col
+        self.syncing = True
+        gui_hooks.sync_will_start()
+
+        def done(future) -> None:
+            self.syncing = False
+            synced = False
+            try:
+                out = future.result()
+                self.mw.pm.set_host_number(out.host_number)
+                if out.new_endpoint:
+                    self.mw.pm.set_current_sync_url(out.new_endpoint)
+                if out.required == out.NO_CHANGES:
+                    synced = True
+                    self.synced_at = time.monotonic()
+                    if media:
+                        self.mw.media_syncer.start_monitoring()
+                else:
+                    store.log("sync (%s): AnkiWeb asks for a full sync, left to Anki's Sync button" % reason)
+                    if self.tray is not None:
+                        self.tray.showMessage("Micro Review", "AnkiWeb asks for a full sync: open Anki and click Sync.")
+            except Exception as error:
+                store.log("sync (%s) failed: %r" % (reason, error))
+                _forget_bad_login(self.mw, error)
+            if self.mw.col is not None:
+                try:
+                    self.mw.col._load_scheduler()  # The scheduler version may have changed.
+                    self.mw.col.models._clear_cache()
+                    self.own_sync_finishing = True
+                    gui_hooks.sync_did_finish()
+                    self.mw.reset()
+                except Exception as error:
+                    store.log("after sync: %r" % error)
+                finally:
+                    self.own_sync_finishing = False
+            if synced and tell_phone:
+                self.tell_phone_synced()
+            again, self.sync_again = self.sync_again, None
+            if again is not None:
+                QTimer.singleShot(1000, lambda: self.sync_quietly("again", tell_phone=again))
+
+        self.mw.taskman.run_in_background(lambda: col.sync_collection(auth, media), done)
+
+    def on_anki_synced(self) -> None:
+        """A sync from Anki itself (its button, or at opening and closing): it may carry answers given in Anki."""
+        if not self.own_sync_finishing:
+            self.tell_phone_synced()
+
+    def tell_phone_synced(self) -> None:
+        if not self.online or self.mw.pm is None:
+            return
+        topic = rules.sync_topic(self.pairing_code())
+
+        def done(future) -> None:
+            try:
+                future.result()
+            except Exception as error:
+                store.log("couldn't tell the phone about the sync: %r" % error)
+
+        self.mw.taskman.run_in_background(lambda: relay.post_synced(topic), done)
 
     # Status
 
@@ -416,6 +533,17 @@ def add_action(menu, text: str, handler) -> QAction:
     return action
 
 
+def _forget_bad_login(mw, error: Exception) -> None:
+    """As Anki does: a refused login is forgotten, so Anki asks for it again."""
+    try:
+        from anki.errors import SyncError, SyncErrorKind
+
+        if isinstance(error, SyncError) and error.kind is SyncErrorKind.AUTH:
+            mw.pm.clear_sync_auth()
+    except Exception:
+        pass
+
+
 def _started_with_windows() -> bool:
     """The autostart command names the profile (-p); opening Anki by hand doesn't."""
     return any(arg in ("-p", "--profile") or arg.startswith("--profile=") for arg in sys.argv[1:])
@@ -447,4 +575,5 @@ def setup(mw) -> None:
     mw.addonManager.setConfigAction(ADDON, controller.open_settings)
 
     gui_hooks.profile_did_open.append(controller.start)
+    gui_hooks.sync_did_finish.append(controller.on_anki_synced)
     gui_hooks.profile_will_close.append(controller.stop)

@@ -3,8 +3,8 @@
 An Anki add-on (Anki 2.1.49 to current Anki 26.09 and forks built on it, such as the FSRS-7 / RWKV fork; Windows)
 that does on the PC what Micro Review Focus does on the phone:
 
-- **A few cards every so often**: 5 cards after every 20 minutes of actual use of the PC (mouse or keyboard), in a
-  window that stays on top until they're answered. Pass or Fail, each counts; **Bury** puts a card away until
+- **A few cards every so often**: 5 cards after every 20 minutes of actual use of the PC (mouse or keyboard input
+  in the last 30 seconds; never while you're away), in a window that stays on top until they're answered. Pass or Fail, each counts; **Bury** puts a card away until
   tomorrow and doesn't count. **Keep going** afterwards, or **Study now** from the tray, for as long as wanted.
 - **Never in the middle of a game**: not while a Steam game runs, while one of the listed processes runs
   (Minecraft by default), or while a full-screen app other than a browser is in front.
@@ -12,6 +12,9 @@ that does on the PC what Micro Review Focus does on the phone:
 - **Only while the PC is online.**
 - **Pauses the phone** while the PC is used: no cards and no gate on the phone until 5 minutes after the last mouse
   or keyboard input. Pair the phone with the code in Tools › Micro Review Desktop.
+- **Syncs before and after the cards**, in the background (no sync window, nothing comes to the front): before, to
+  get the phone's latest answers, so a card isn't reviewed twice; after, then it tells the phone, which syncs too. A
+  full sync (after a note type change, for example) is left to Anki's Sync button, with a message in the tray.
 - **Starts with Windows**, in the tray; closing Anki's window keeps it there (File › Exit or the tray's Quit Anki quit).
 - The card's buttons wait a second after the window appears, and the window doesn't take the keyboard until it is
   clicked: typing goes on in the app in use.
@@ -22,18 +25,19 @@ Cards come from Anki's own scheduler and look as in Anki's reviewer (template, s
 
 | File | Role |
 |---|---|
-| `controller.py` | The 5-second tick: time of use, snooze, online check, game check, the phone; tray, autostart, close to tray. |
+| `controller.py` | The 5-second tick: time of use, snooze, online check, game check, the phone; quiet syncs (`col.sync_collection` in the background, Anki 2.1.66+; Anki's own sync before); tray, autostart, close to tray (and Anki kept running when the card window closes with Anki's window hidden). |
 | `prompt.py` | The card window (`CardPrompt`). |
 | `cards.py` | Cards through `col.sched` (`getCard`, `answerCard`, `nextIvlStr`, `bury_cards`), in the chosen decks; the current deck is put back afterwards. |
 | `windows.py` | Idle time (`GetLastInputInfo`), games (Steam's `RunningAppID`, windows and processes, full screen), the `Run` registry key. Answers "nothing" elsewhere. |
-| `relay.py` | ntfy.sh: tells the phone how many seconds to stay paused; online check. |
+| `relay.py` | ntfy.sh: tells the phone how many seconds to stay paused, and that the PC synced; online check. |
 | `rules.py` | The pure logic, unit tested (`desktop/tests`). |
 | `store.py` | State (pairing code, skips, snooze) and the log, in `user_files` (kept by Anki across updates). |
 | `settings.py` | Tools › Micro Review Desktop. |
 
 The phone side is `PcActivity.kt` / `PcPairing.kt`: the topic is `mrf-<code>`; each message is a number of seconds
 counted from the relay's time; the latest message counts ("420" while in use, refreshed every 4 minutes; the
-remainder when the use stops; "0" to resume).
+remainder when the use stops; "0" to resume). After a sync that carries the PC's answers (its own after the cards,
+or Anki's), the PC posts "synced" to `mrf-<code>-sync`; the phone reads it while in use and syncs AnkiDroid.
 
 ## Tests
 

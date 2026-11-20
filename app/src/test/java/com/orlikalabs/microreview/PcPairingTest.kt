@@ -13,6 +13,14 @@ class PcPairingTest {
         assertNull(PcPairing.normalize("k3p9-x2mq-7rtv-w8de-zz"))
         assertEquals("k3p9-x2mq-7rtv-w8de", PcPairing.display("k3p9x2mq7rtvw8de"))
         assertEquals("mrf-k3p9x2mq7rtvw8de", PcPairing.topic("k3p9x2mq7rtvw8de"))
+        assertEquals("mrf-k3p9x2mq7rtvw8de-sync", PcPairing.syncTopic("k3p9x2mq7rtvw8de"))
+    }
+
+    @Test
+    fun whenThePcSynced() {
+        assertEquals(1763490000L * 1000, PcPairing.messageTime("""{"id":"a","time":1763490000,"event":"message","topic":"mrf-x-sync","message":"synced"}"""))
+        assertEquals(0L, PcPairing.messageTime("""{"id":"a","time":1763490000,"event":"open","topic":"mrf-x-sync"}"""))
+        assertEquals(0L, PcPairing.messageTime(""))
     }
 
     @Test

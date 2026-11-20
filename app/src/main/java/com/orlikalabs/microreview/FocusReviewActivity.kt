@@ -21,7 +21,7 @@ class FocusReviewActivity : ComponentActivity() {
     private val host = object : FocusCardController.Host {
         override fun close() {
             // In front: allowed to ask AnkiDroid to sync the answers (AnkiSync).
-            if (AnkiSync.isDue(this@FocusReviewActivity)) AnkiSync.request(this@FocusReviewActivity, "after cards")
+            if (AnkiSync.isDueAfterCards(this@FocusReviewActivity)) AnkiSync.request(this@FocusReviewActivity, "after cards")
             finish()
         }
 

@@ -148,3 +148,18 @@ def test_anki_program_for_each_installer():
     # Anki run from Python (the 25.07 launcher, a pip install): no program to start.
     assert rules.anki_program("-c", r"C:\x\.venv\Scripts\pythonw.exe") is None
     assert rules.anki_program("", "") is None
+
+
+def test_sync_topic():
+    assert rules.sync_topic("k3p9x2mq7rtvw8de") == "mrf-k3p9x2mq7rtvw8de-sync"
+
+
+def test_pull_before_cards():
+    # Never synced: sync first.
+    assert rules.wants_pull(True, True, now=1000.0, synced_at=-1e9, tried_at=-1e9, max_age=60)
+    # Just synced, or just tried (a failing sync doesn't hold the cards back): the cards now.
+    assert not rules.wants_pull(True, True, now=1000.0, synced_at=980.0, tried_at=-1e9, max_age=60)
+    assert not rules.wants_pull(True, True, now=1000.0, synced_at=-1e9, tried_at=990.0, max_age=60)
+    # Not logged in, or syncing turned off.
+    assert not rules.wants_pull(False, True, now=1000.0, synced_at=-1e9, tried_at=-1e9, max_age=60)
+    assert not rules.wants_pull(True, False, now=1000.0, synced_at=-1e9, tried_at=-1e9, max_age=60)

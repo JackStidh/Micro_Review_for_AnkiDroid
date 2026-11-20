@@ -140,6 +140,19 @@ def topic(code: str) -> str:
     return "mrf-" + code
 
 
+def sync_topic(code: str) -> str:
+    """The relay topic where the PC says it synced its answers, for the phone to sync too (PcPairing.syncTopic)."""
+    return topic(code) + "-sync"
+
+
+def wants_pull(logged_in: bool, enabled: bool, now: float, synced_at: float, tried_at: float, max_age: float) -> bool:
+    """Whether to sync before showing cards: the phone's latest answers, so a card isn't reviewed twice.
+
+    Not when the last sync, or the last try (a failing sync doesn't hold the cards back), is recent.
+    """
+    return logged_in and enabled and now - max(synced_at, tried_at) > max_age
+
+
 def anki_program(argv0: str, executable: str) -> Optional[str]:
     """Anki's own program on Windows, to start it with Windows, or None when Anki runs from a Python install.
 

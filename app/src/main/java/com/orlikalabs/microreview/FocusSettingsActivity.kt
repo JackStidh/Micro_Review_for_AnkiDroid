@@ -464,7 +464,8 @@ class FocusSettingsActivity : Activity() {
             "Card style: ${FocusSettings.nudgeStyle(this).name.lowercase()}, default every ${FocusSettings.defaultIntervalMinutes(this)} min, per app: ${FocusSettings.appIntervals(this)}",
             "Gated: ${FocusSettings.gatedApps(this)}, pass: ${FocusSettings.gatePass(this) ?: "none"}",
             "AnkiDroid sync: answers waiting ${yes(AnkiSync.isPending(this))}, last asked " +
-                (AnkiSync.requestedAt(this).takeIf { it != 0L }?.let { UsageMonitorService.formatTime(this, it) } ?: "never"),
+                (AnkiSync.requestedAt(this).takeIf { it != 0L }?.let { UsageMonitorService.formatTime(this, it) } ?: "never") +
+                ", PC synced " + (AnkiSync.pcSyncedAt(this).takeIf { it != 0L }?.let { UsageMonitorService.formatTime(this, it) } ?: "never"),
             "",
             "Recent events:",
         )
