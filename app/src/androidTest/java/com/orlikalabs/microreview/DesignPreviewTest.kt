@@ -167,7 +167,7 @@ class DesignPreviewTest {
             CardOverlay.requestLife(
                 context,
                 LifePrompt.Nudge(
-                    listOf(Habits.Reminder(creatine, 9 * 60), Habits.Reminder(Habits.WATER, null)),
+                    listOf(Habits.Reminder(Habits.SUGGESTIONS.first { it.id == "creatine" }, 9 * 60), Habits.Reminder(Habits.WATER, null)),
                     LifeStore.tasks(context).take(1),
                     inactive = true,
                 ),
