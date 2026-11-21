@@ -64,6 +64,8 @@ import com.orlikalabs.microreview.ui.aero.LocalAero
 import com.orlikalabs.microreview.ui.aero.Orb
 import com.orlikalabs.microreview.ui.aero.Pill
 import com.orlikalabs.microreview.ui.aero.SectionTitle
+import com.orlikalabs.microreview.ui.aero.AeroThemes
+import com.orlikalabs.microreview.ui.aero.ThemeChoice
 import com.orlikalabs.microreview.ui.aero.ThemePicker
 import com.orlikalabs.microreview.ui.aero.orbInk
 import com.orlikalabs.microreview.ui.aero.titleShadow
@@ -73,6 +75,7 @@ data class LauncherApp(val name: String, val packageName: String)
 
 /** What the settings show, read from the stored settings each time something changes. */
 data class SettingsState(
+    val themeChoice: ThemeChoice = ThemeChoice(),
     val missingUsage: Boolean = false,
     val missingOverlay: Boolean = false,
     val missingNotifications: Boolean = false,
@@ -134,7 +137,9 @@ interface SettingsActions {
     fun unpair()
     fun setPausePc(on: Boolean)
     fun syncNow()
+    /** A theme tapped: chosen when locked, ticked in or out of the shuffle otherwise ([AeroThemes.tap]). */
     fun chooseTheme(palette: AeroPalette)
+    fun toggleThemeLock()
     fun diagnostics(): String
     fun copyDiagnostics()
     fun reportIssue()
@@ -318,7 +323,7 @@ fun SettingsScreen(state: SettingsState, actions: SettingsActions, appsLoaded: I
 
             item(key = "theme") {
                 Section(stringResource(R.string.kanji_theme), stringResource(R.string.theme_title), stringResource(R.string.theme_detail)) {
-                    ThemePicker(LocalAero.current, actions::chooseTheme)
+                    ThemePicker(LocalAero.current, state.themeChoice, actions::chooseTheme, actions::toggleThemeLock)
                 }
             }
 

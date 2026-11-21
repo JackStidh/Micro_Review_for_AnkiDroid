@@ -53,6 +53,11 @@
         </activity>
         <!-- The app gate, a full-screen nudge or a "Keep going" session: opened over the app in front. -->
         <activity
+            android:name=".MoveActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:exported="false"
+            android:theme="@style/Theme.AnkiNotifications" />
+        <activity
             android:name=".FocusReviewActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
             android:exported="false"

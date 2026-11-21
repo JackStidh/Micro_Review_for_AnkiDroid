@@ -19,6 +19,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -32,12 +33,16 @@ import com.orlikalabs.microreview.ui.CurrentCard
 import com.orlikalabs.microreview.ui.DeckItem
 import com.orlikalabs.microreview.ui.HomeActions
 import com.orlikalabs.microreview.ui.HomeScreen
+import com.orlikalabs.microreview.ui.MoveState
+import com.orlikalabs.microreview.ui.MoveSummary
 import com.orlikalabs.microreview.ui.HomeStatus
 import com.orlikalabs.microreview.ui.ScreenState
 import com.orlikalabs.microreview.ui.SetupNeed
 import com.orlikalabs.microreview.ui.aero.AeroPalette
 import com.orlikalabs.microreview.ui.aero.AeroTheme
 import com.orlikalabs.microreview.ui.aero.AeroThemes
+import com.orlikalabs.microreview.ui.aero.ThemeVisit
+import com.orlikalabs.microreview.ui.aero.ThemeChoice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -61,6 +66,11 @@ class MainActivity : ComponentActivity() {
     private var status by mutableStateOf(HomeStatus())
     private var needs by mutableStateOf(emptyList<SetupNeed>())
     private var palette by mutableStateOf(AeroThemes.SAKURA)
+    private var themeChoice by mutableStateOf(ThemeChoice())
+    private var move by mutableStateOf(MoveSummary())
+
+    /** Off for a theme shuffled as the app comes back into view: it's simply there, no crossfade. */
+    private var themeAnimated by mutableStateOf(true)
 
     private val permissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
@@ -71,7 +81,8 @@ class MainActivity : ComponentActivity() {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        palette = AeroThemes.current(this)
+        palette = ThemeVisit.arrive(this)
+        themeChoice = AeroThemes.choice(this)
         applyBars(palette)
         super.onCreate(savedInstanceState)
         Notifications.removeOldChannels(this)
@@ -101,11 +112,16 @@ class MainActivity : ComponentActivity() {
                 AnkiSync.request(this, "from the app")
                 status = readStatus()
             },
-            onTheme = ::chooseTheme,
+            onTheme = { tapped -> showTheme(AeroThemes.tap(this, tapped)) },
+            onOpenMove = { startActivity(MoveActivity.intent(this)) },
+            onThemeLock = {
+                AeroThemes.toggleLock(this)
+                themeChoice = AeroThemes.choice(this)
+            },
             onFix = ::fix,
         )
         setContent {
-            Crossfade(palette, animationSpec = tween(450), label = "theme") { shown ->
+            Crossfade(palette, animationSpec = if (themeAnimated) tween(450) else snap(), label = "theme") { shown ->
                 AeroTheme(shown) {
                     HomeScreen(
                         state = screenState,
@@ -116,6 +132,8 @@ class MainActivity : ComponentActivity() {
                         needs = needs,
                         snoozeMinutes = FocusSettings.snoozeMinutes(this),
                         actions = actions,
+                        themeChoice = themeChoice,
+                        move = move,
                     )
                 }
             }
@@ -134,15 +152,30 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         // Back from the settings or the system's: the theme, the decks or a permission may have changed.
-        val chosen = AeroThemes.current(this)
-        if (chosen.id != palette.id) chooseTheme(chosen)
+        showTheme(AeroThemes.current(this))
+        move = MoveSummary(MoveStore.phase(this) != null, MoveState(days = MoveStore.days(this)).doneToday)
         refresh()
     }
 
-    private fun chooseTheme(chosen: AeroPalette) {
-        AeroThemes.choose(this, chosen)
-        palette = chosen
-        applyBars(chosen)
+    override fun onStart() {
+        super.onStart()
+        // Back in view after a moment away: a new theme, there at once.
+        val arriving = ThemeVisit.arrive(this)
+        ThemeVisit.started()
+        if (arriving.id != palette.id) showTheme(arriving, animated = false)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        ThemeVisit.stopped()
+    }
+
+    private fun showTheme(shown: AeroPalette, animated: Boolean = true) {
+        themeChoice = AeroThemes.choice(this)
+        if (shown.id == palette.id) return
+        themeAnimated = animated
+        palette = shown
+        applyBars(shown)
     }
 
     /** Light or dark status and navigation bar icons, for the theme. */

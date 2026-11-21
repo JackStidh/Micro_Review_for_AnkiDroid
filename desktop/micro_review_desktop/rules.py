@@ -73,6 +73,85 @@ class ActiveClock:
         self.seconds = 0.0
 
 
+# A few minutes without input: up and away from the desk, the sitting time starts over.
+AWAY_SECONDS = 180
+# No input for this long while the stand-up prompt shows: stood up, the break counts.
+STOOD_UP_SECONDS = 45
+
+
+def stepped_away(idle_seconds: float, shown_seconds: float) -> bool:
+    """While the stand-up prompt shows (for `shown_seconds`): no input for STOOD_UP_SECONDS since some input after it
+    appeared (not just a quiet stretch that was already running), or no input long enough to be away anyway."""
+    return (idle_seconds >= STOOD_UP_SECONDS and idle_seconds <= shown_seconds) or idle_seconds >= AWAY_SECONDS
+
+
+@dataclass
+class SittingClock:
+    """How long the user has been sitting at the PC: since the last break. Unlike ActiveClock, time without input
+    counts (reading, a video) until AWAY_SECONDS, which is a break; so is a long gap between ticks (sleep)."""
+
+    seconds: float = 0.0
+
+    def tick(self, elapsed: float, idle_seconds: float, away_seconds: float = AWAY_SECONDS) -> None:
+        if elapsed > 60 or idle_seconds >= away_seconds:
+            self.seconds = 0.0
+        elif elapsed > 0:
+            self.seconds += elapsed
+
+    def due(self, minutes: int) -> bool:
+        return minutes > 0 and self.seconds >= minutes * 60
+
+    def minutes(self) -> int:
+        return int(self.seconds // 60)
+
+    def reset(self) -> None:
+        self.seconds = 0.0
+
+
+@dataclass(frozen=True)
+class DeskMove:
+    """A stand-up break's exercise, the same as Micro Review Focus's desk breaks (MovePlan.DESK, strings.xml)."""
+
+    id: str
+    name: str
+    dose: str
+    how: str
+
+
+DESK_MOVES = (
+    DeskMove("standing_extension", "Standing back extension", "10 reps",
+             "Feet apart, hands on your lower back. Lean back gently from the waist, hips forward, as far as is "
+             "comfortable, and come back up. The quick undo after sitting."),
+    DeskMove("walk_break", "Walk", "2 minutes",
+             "Get up and walk: to the kitchen, around the room, up the stairs. Stand tall, feet pointing forward."),
+    DeskMove("chin_tuck", "Chin tuck", "10 reps, 5 s holds",
+             "Standing tall: glide your head straight back, making a double chin, eyes level, until the back of your "
+             "neck lengthens. Hold, relax."),
+    DeskMove("pec_stretch", "Doorway chest stretch", "2 \u00d7 30 s",
+             "Forearm on a door frame, elbow at shoulder height. Step through gently until the front of your chest "
+             "stretches. Ribs down, no arching."),
+    DeskMove("hinge", "Hip hinge practice", "10 reps",
+             "Stand with soft knees. Push your hips back as if closing a car door behind you, chest forward, back "
+             "straight. Come up by squeezing your glutes."),
+    DeskMove("calf_raise", "Calf raise", "15 reps",
+             "Stand tall, a hand on the desk for balance. Rise onto your toes, pause, lower slowly."),
+    DeskMove("standing_hip_flexor", "Standing hip flexor stretch", "30 s per side",
+             "Long step stance, back heel up. Tuck your tailbone under and squeeze the back glute until the front of "
+             "that hip stretches. Stay tall."),
+    DeskMove("wall_angel", "Wall angel", "8 reps",
+             "Head, upper back and hips against a wall, feet a step out. Arms in a W against the wall: slide them up "
+             "to a Y and back down, only as far as they stay on the wall."),
+    DeskMove("scap_squeeze", "Shoulder blade squeeze", "10 reps, 3 s holds",
+             "Arms by your sides. Draw your shoulder blades back and down, toward your back pockets, without "
+             "shrugging or arching. Hold, relax."),
+)
+
+
+def desk_move(count: int) -> DeskMove:
+    """The stand-up break after `count` breaks: each in turn."""
+    return DESK_MOVES[count % len(DESK_MOVES)]
+
+
 @dataclass
 class PhonePause:
     """What to tell the phone, which stays paused until `pause_seconds` after the PC's last input.

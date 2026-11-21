@@ -1,0 +1,128 @@
+package com.orlikalabs.microreview
+
+import androidx.annotation.StringRes
+
+/** The texts of [MovePlan]'s exercises and parts, in `strings.xml` (move_<id>_name, _dose, _how). */
+object MoveText {
+    @StringRes
+    fun name(move: MovePlan.Move): Int = when (move.id) {
+        "press_up" -> R.string.move_press_up_name
+        "bird_dog" -> R.string.move_bird_dog_name
+        "side_plank_knees" -> R.string.move_side_plank_knees_name
+        "curl_up" -> R.string.move_curl_up_name
+        "bridge" -> R.string.move_bridge_name
+        "hinge" -> R.string.move_hinge_name
+        "chin_tuck" -> R.string.move_chin_tuck_name
+        "scap_squeeze" -> R.string.move_scap_squeeze_name
+        "pec_stretch" -> R.string.move_pec_stretch_name
+        "wall_angel" -> R.string.move_wall_angel_name
+        "hip_flexor" -> R.string.move_hip_flexor_name
+        "hip_abduction" -> R.string.move_hip_abduction_name
+        "short_foot" -> R.string.move_short_foot_name
+        "standing_extension" -> R.string.move_standing_extension_name
+        "walk_break" -> R.string.move_walk_break_name
+        "calf_raise" -> R.string.move_calf_raise_name
+        "standing_hip_flexor" -> R.string.move_standing_hip_flexor_name
+        "side_plank" -> R.string.move_side_plank_name
+        "push_up" -> R.string.move_push_up_name
+        "box_squat" -> R.string.move_box_squat_name
+        "split_squat" -> R.string.move_split_squat_name
+        "row" -> R.string.move_row_name
+        "single_leg_bridge" -> R.string.move_single_leg_bridge_name
+        "loaded_hinge" -> R.string.move_loaded_hinge_name
+        "carry" -> R.string.move_carry_name
+        else -> R.string.move_title
+    }
+
+    @StringRes
+    fun dose(move: MovePlan.Move): Int = when (move.id) {
+        "press_up" -> R.string.move_press_up_dose
+        "bird_dog" -> R.string.move_bird_dog_dose
+        "side_plank_knees" -> R.string.move_side_plank_knees_dose
+        "curl_up" -> R.string.move_curl_up_dose
+        "bridge" -> R.string.move_bridge_dose
+        "hinge" -> R.string.move_hinge_dose
+        "chin_tuck" -> R.string.move_chin_tuck_dose
+        "scap_squeeze" -> R.string.move_scap_squeeze_dose
+        "pec_stretch" -> R.string.move_pec_stretch_dose
+        "wall_angel" -> R.string.move_wall_angel_dose
+        "hip_flexor" -> R.string.move_hip_flexor_dose
+        "hip_abduction" -> R.string.move_hip_abduction_dose
+        "short_foot" -> R.string.move_short_foot_dose
+        "standing_extension" -> R.string.move_standing_extension_dose
+        "walk_break" -> R.string.move_walk_break_dose
+        "calf_raise" -> R.string.move_calf_raise_dose
+        "standing_hip_flexor" -> R.string.move_standing_hip_flexor_dose
+        "side_plank" -> R.string.move_side_plank_dose
+        "push_up" -> R.string.move_push_up_dose
+        "box_squat" -> R.string.move_box_squat_dose
+        "split_squat" -> R.string.move_split_squat_dose
+        "row" -> R.string.move_row_dose
+        "single_leg_bridge" -> R.string.move_single_leg_bridge_dose
+        "loaded_hinge" -> R.string.move_loaded_hinge_dose
+        "carry" -> R.string.move_carry_dose
+        else -> R.string.move_title
+    }
+
+    @StringRes
+    fun how(move: MovePlan.Move): Int = when (move.id) {
+        "press_up" -> R.string.move_press_up_how
+        "bird_dog" -> R.string.move_bird_dog_how
+        "side_plank_knees" -> R.string.move_side_plank_knees_how
+        "curl_up" -> R.string.move_curl_up_how
+        "bridge" -> R.string.move_bridge_how
+        "hinge" -> R.string.move_hinge_how
+        "chin_tuck" -> R.string.move_chin_tuck_how
+        "scap_squeeze" -> R.string.move_scap_squeeze_how
+        "pec_stretch" -> R.string.move_pec_stretch_how
+        "wall_angel" -> R.string.move_wall_angel_how
+        "hip_flexor" -> R.string.move_hip_flexor_how
+        "hip_abduction" -> R.string.move_hip_abduction_how
+        "short_foot" -> R.string.move_short_foot_how
+        "standing_extension" -> R.string.move_standing_extension_how
+        "walk_break" -> R.string.move_walk_break_how
+        "calf_raise" -> R.string.move_calf_raise_how
+        "standing_hip_flexor" -> R.string.move_standing_hip_flexor_how
+        "side_plank" -> R.string.move_side_plank_how
+        "push_up" -> R.string.move_push_up_how
+        "box_squat" -> R.string.move_box_squat_how
+        "split_squat" -> R.string.move_split_squat_how
+        "row" -> R.string.move_row_how
+        "single_leg_bridge" -> R.string.move_single_leg_bridge_how
+        "loaded_hinge" -> R.string.move_loaded_hinge_how
+        "carry" -> R.string.move_carry_how
+        else -> R.string.move_title
+    }
+
+    @StringRes
+    fun part(part: MovePlan.Part): Int = when (part.id) {
+        "rehab" -> R.string.move_part_rehab
+        "posture" -> R.string.move_part_posture
+        "warmup" -> R.string.move_part_warmup
+        "strength" -> R.string.move_part_strength
+        else -> R.string.move_routine
+    }
+
+    @StringRes
+    fun pain(spot: MovePlan.PainSpot): Int = when (spot) {
+        MovePlan.PainSpot.NONE -> R.string.move_pain_none
+        MovePlan.PainSpot.BACK -> R.string.move_pain_back
+        MovePlan.PainSpot.BUTTOCK -> R.string.move_pain_buttock
+        MovePlan.PainSpot.THIGH -> R.string.move_pain_thigh
+        MovePlan.PainSpot.KNEE -> R.string.move_pain_knee
+        MovePlan.PainSpot.LOWER_LEG -> R.string.move_pain_lower_leg
+    }
+
+    @StringRes
+    fun trend(trend: MovePlan.Trend): Int = when (trend) {
+        MovePlan.Trend.BETTER -> R.string.move_trend_better
+        MovePlan.Trend.SAME -> R.string.move_trend_same
+        MovePlan.Trend.WORSE -> R.string.move_trend_worse
+    }
+
+    @StringRes
+    fun warning(warning: MovePlan.Warning): Int = when (warning) {
+        MovePlan.Warning.BACK_OFF -> R.string.move_warning_back_off
+        MovePlan.Warning.TOO_MUCH -> R.string.move_warning_too_much
+    }
+}

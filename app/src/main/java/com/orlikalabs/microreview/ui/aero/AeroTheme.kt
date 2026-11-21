@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import com.orlikalabs.microreview.FocusSettings
+import com.orlikalabs.microreview.ThemeShuffle
 
 /**
  * The look of the app: a Japanese app of the Frutiger Aero years (glossy gel buttons, glass panels, skies, light,
@@ -190,9 +191,39 @@ object AeroThemes {
 
     fun byId(id: String?): AeroPalette = ALL.firstOrNull { it.id == id } ?: SAKURA
 
+    /** The theme shown now (the locked one when locked). */
     fun current(context: Context): AeroPalette = byId(FocusSettings.themeName(context))
 
     fun choose(context: Context, palette: AeroPalette) = FocusSettings.setThemeName(context, palette.id)
+
+    fun choice(context: Context) = ThemeChoice(FocusSettings.themeLocked(context), FocusSettings.themesOff(context))
+
+    /**
+     * A screen opens: unless the theme is locked, another one at random among the ticked ones ([ThemeShuffle]).
+     * Returns the theme to show.
+     */
+    fun shuffle(context: Context): AeroPalette {
+        if (FocusSettings.themeLocked(context)) return current(context)
+        val next = ThemeShuffle.next(ALL.map { it.id }, FocusSettings.themesOff(context), FocusSettings.themeName(context))
+        FocusSettings.setThemeName(context, next)
+        return byId(next)
+    }
+
+    /**
+     * A theme tapped in the picker: locked, it becomes the one shown; shuffling, it's ticked or unticked (the last
+     * ticked one stays). Returns the theme to show now.
+     */
+    fun tap(context: Context, palette: AeroPalette): AeroPalette {
+        if (FocusSettings.themeLocked(context)) {
+            choose(context, palette)
+        } else {
+            FocusSettings.setThemesOff(context, ThemeShuffle.toggled(ALL.map { it.id }, FocusSettings.themesOff(context), palette.id))
+        }
+        return current(context)
+    }
+
+    /** Locks the theme shown now, or goes back to shuffling. */
+    fun toggleLock(context: Context) = FocusSettings.setThemeLocked(context, !FocusSettings.themeLocked(context))
 }
 
 val LocalAero = staticCompositionLocalOf { AeroThemes.SAKURA }
@@ -235,5 +266,38 @@ fun AeroTheme(palette: AeroPalette, content: @Composable () -> Unit) {
     }
     CompositionLocalProvider(LocalAero provides palette, LocalAeroMotion provides motion) {
         MaterialTheme(colorScheme = scheme, content = content)
+    }
+}
+
+/** How the theme is picked: [locked] on the current one, or shuffled among all but [off] (theme ids). */
+data class ThemeChoice(val locked: Boolean = false, val off: Set<String> = emptySet())
+
+/**
+ * The app's visits, for the shuffle: a new theme when the app comes into view after a moment away
+ * ([ThemeShuffle.isNewVisit]), the same one across its screens (home, Settings, a card session) and a rotation.
+ * Each activity calls [arrive] before reading its theme (in onCreate and onStart), then [started] and [stopped].
+ */
+object ThemeVisit {
+    private var visible = 0
+    private var hiddenAt = -1L
+    private var arriving = false
+
+    /** The theme for a screen coming into view: shuffled if that's a new visit. Main thread. */
+    fun arrive(context: Context): AeroPalette {
+        if (visible == 0 && !arriving && ThemeShuffle.isNewVisit(hiddenAt, System.currentTimeMillis())) {
+            arriving = true
+            return AeroThemes.shuffle(context)
+        }
+        return AeroThemes.current(context)
+    }
+
+    fun started() {
+        visible++
+        arriving = false
+    }
+
+    fun stopped() {
+        visible = maxOf(0, visible - 1)
+        if (visible == 0) hiddenAt = System.currentTimeMillis()
     }
 }

@@ -47,6 +47,7 @@ DEFAULTS = {
     "keep_running_when_closed": True,
     "sync_after_cards": True,
     "morning_hour": 7,
+    "stand_up_minutes": 25,
 }  # type: Dict[str, Any]
 
 
@@ -55,6 +56,10 @@ class Controller:
         self.mw = mw
         self.state = store.load()
         self.clock = rules.ActiveClock()
+        self.sitting = rules.SittingClock()
+        self.break_prompt = None
+        self.break_shown_at = 0.0
+        self.break_later_until = 0.0
         self.phone = rules.PhonePause()
         self.prompt = None
         self.tray = None  # type: Optional[QSystemTrayIcon]
@@ -192,7 +197,8 @@ class Controller:
         self._check_online(now)
         self._tell_phone(idle)
         self._update_tray()
-        if self.prompt is not None or self.mw.col is None or self.syncing:
+        self._break_tick(now, elapsed, idle, cfg)
+        if self.prompt is not None or self.break_prompt is not None or self.mw.col is None or self.syncing:
             return
         if time.time() < self.snoozed_until():
             return
@@ -218,6 +224,77 @@ class Controller:
             self.sync_quietly("before cards", tell_phone=False)
             return
         self.show_prompt()
+
+    # Stand-up breaks
+
+    def _break_tick(self, now: float, elapsed: float, idle: float, cfg: Dict[str, Any]) -> None:
+        """After `stand_up_minutes` of sitting, a stand-up break, after the cards if they're showing. During a game,
+        a tray notification instead: a window on top could knock a full-screen game out."""
+        if self.break_prompt is not None:
+            if rules.stepped_away(idle, now - self.break_shown_at):
+                self.break_done("stepped away")
+            return
+        self.sitting.tick(elapsed, idle)
+        minutes = int(cfg.get("stand_up_minutes", 0) or 0)
+        if not self.sitting.due(minutes) or now < self.break_later_until or self.prompt is not None:
+            return
+        if time.time() < self.snoozed_until():
+            return
+        if cfg["gaming_shutoff"]:
+            if now - self.game_checked > GAME_CHECK_SECONDS:
+                self._check_game(now)
+                return
+            if self.game:
+                if self.tray is not None:
+                    move = rules.desk_move(int(self.state.get("break_count", 0)))
+                    self.tray.showMessage("Time to stand up", "%d minutes sitting. %s: %s" % (
+                        self.sitting.minutes(), move.name, move.dose), QSystemTrayIcon.MessageIcon.Information, 8000)
+                self.break_later_until = now + 10 * 60
+                return
+        self.show_break()
+
+    def show_break(self) -> None:
+        from .breaks import BreakPrompt
+
+        if self.break_prompt is not None:
+            return
+        move = rules.desk_move(int(self.state.get("break_count", 0)))
+        prompt = BreakPrompt(self, move, max(1, self.sitting.minutes()))
+        self.break_prompt = prompt
+        self.break_shown_at = time.monotonic()
+        try:
+            prompt.start()
+        except Exception as error:
+            store.log("can't show the stand-up break: %r" % error)
+            self.break_prompt = None
+            prompt.deleteLater()
+            self.break_later_until = time.monotonic() + 10 * 60
+            return
+        store.log("stand-up break: %s" % move.id)
+
+    def break_done(self, how: str) -> None:
+        self.state["break_count"] = int(self.state.get("break_count", 0)) + 1
+        self._save_state()
+        self.sitting.reset()
+        store.log("stand-up break done (%s)" % how)
+        self._close_break()
+
+    def break_later(self) -> None:
+        self.break_later_until = time.monotonic() + 5 * 60
+        store.log("stand-up break in 5 min")
+        self._close_break()
+
+    def _close_break(self) -> None:
+        prompt = self.break_prompt
+        self.break_prompt = None
+        if prompt is not None:
+            prompt.close()
+
+    def break_closed(self, prompt) -> None:
+        if self.break_prompt is prompt:
+            # Closed some other way (Alt+F4): later, like "5 min".
+            self.break_prompt = None
+            self.break_later_until = time.monotonic() + 5 * 60
 
     def _studying_in_anki(self) -> bool:
         return self.mw.state == "review" and self.mw.isVisible() and self.mw.isActiveWindow()
@@ -455,7 +532,11 @@ class Controller:
             return "Offline: paused"
         if self.game:
             return "Game running (%s): cards wait" % self.game
-        return "Cards in %d min of use" % self.clock.minutes_left(cfg["interval_minutes"])
+        status = "Cards in %d min of use" % self.clock.minutes_left(cfg["interval_minutes"])
+        stand_up = int(cfg.get("stand_up_minutes", 0) or 0)
+        if stand_up:
+            status += ", stand up in %d min" % max(0, stand_up - self.sitting.minutes())
+        return status
 
     # Tray, window and Windows
 

@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
@@ -43,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
@@ -62,6 +64,7 @@ import com.orlikalabs.microreview.ui.aero.AeroBackground
 import com.orlikalabs.microreview.ui.aero.AeroCheck
 import com.orlikalabs.microreview.ui.aero.AeroPalette
 import com.orlikalabs.microreview.ui.aero.AeroText
+import com.orlikalabs.microreview.ui.aero.Beads
 import com.orlikalabs.microreview.ui.aero.GelButton
 import com.orlikalabs.microreview.ui.aero.GelTone
 import com.orlikalabs.microreview.ui.aero.GlassPanel
@@ -70,6 +73,7 @@ import com.orlikalabs.microreview.ui.aero.Orb
 import com.orlikalabs.microreview.ui.aero.Pill
 import com.orlikalabs.microreview.ui.aero.Seal
 import com.orlikalabs.microreview.ui.aero.SectionTitle
+import com.orlikalabs.microreview.ui.aero.ThemeChoice
 import com.orlikalabs.microreview.ui.aero.ThemePicker
 import com.orlikalabs.microreview.ui.aero.orbInk
 import com.orlikalabs.microreview.ui.aero.titleShadow
@@ -130,6 +134,8 @@ class HomeActions(
     val onResume: () -> Unit,
     val onSync: () -> Unit,
     val onTheme: (AeroPalette) -> Unit,
+    val onThemeLock: () -> Unit,
+    val onOpenMove: () -> Unit,
     val onFix: (SetupNeed) -> Unit,
 )
 
@@ -143,6 +149,8 @@ fun HomeScreen(
     needs: List<SetupNeed>,
     snoozeMinutes: Int,
     actions: HomeActions,
+    themeChoice: ThemeChoice = ThemeChoice(),
+    move: MoveSummary = MoveSummary(),
 ) {
     val insets = WindowInsets.safeDrawing.asPaddingValues()
     AeroBackground(Modifier.fillMaxSize()) {
@@ -173,6 +181,7 @@ fun HomeScreen(
                 }
                 ScreenState.Ready -> {
                     item(key = "hero") { Hero(status, dueTotal(selectedDecks), snoozeMinutes, actions) }
+                    item(key = "move") { MoveEntry(move, actions.onOpenMove) }
                     if (needs.isNotEmpty()) item(key = "needs") { Needs(needs, actions.onFix) }
                     item(key = "next") { NextUp(currentCard) }
                     item(key = "order-title") {
@@ -213,7 +222,7 @@ fun HomeScreen(
                     item(key = "theme-title") {
                         SectionTitle(stringResource(R.string.kanji_theme), stringResource(R.string.theme_title), stringResource(R.string.theme_detail))
                     }
-                    item(key = "themes") { ThemePicker(LocalAero.current, actions.onTheme) }
+                    item(key = "themes") { ThemePicker(LocalAero.current, themeChoice, actions.onTheme, actions.onThemeLock) }
                 }
             }
             item(key = "version") { AppVersion() }
@@ -242,6 +251,33 @@ private fun Header(onOpenSettings: () -> Unit) {
         }
         Orb({ onOpenSettings() }, size = 48.dp, contentDescription = stringResource(R.string.settings_title)) {
             Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings_title), tint = orbInk(), modifier = Modifier.size(26.dp))
+        }
+    }
+}
+
+/** Move on the home screen: today's three habits, or what it offers before a program is picked. */
+data class MoveSummary(val setUp: Boolean = false, val doneToday: Int = 0)
+
+@Composable
+private fun MoveEntry(move: MoveSummary, onOpen: () -> Unit) {
+    GlassPanel(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).clickable(onClick = onOpen),
+        padding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Seal(stringResource(R.string.kanji_move), 44.dp, tone = if (move.setUp && move.doneToday >= 3) GelTone.PASS else GelTone.ACCENT)
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.move_title), style = AeroText.title(19))
+                Text(
+                    if (move.setUp) stringResource(R.string.move_home_detail, move.doneToday) else stringResource(R.string.move_home_off),
+                    style = AeroText.soft(13),
+                )
+            }
+            if (move.setUp) {
+                Spacer(Modifier.width(8.dp))
+                Beads(move.doneToday, 3)
+            }
         }
     }
 }

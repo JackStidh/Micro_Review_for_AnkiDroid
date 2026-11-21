@@ -38,8 +38,12 @@ object FocusSettings {
     private const val KEY_GATE_PASS = "gate_pass"
     private const val KEY_SNOOZE_LIFTS_GATE = "snooze_lifts_gate"
 
-    /** The look of the app ([com.orlikalabs.microreview.ui.aero.AeroThemes]): a theme's name. */
+    /** The look of the app ([com.orlikalabs.microreview.ui.aero.AeroThemes]): the theme shown (or locked), its name. */
     private const val KEY_THEME = "theme"
+
+    /** Locked: always [KEY_THEME]. Otherwise each screen shuffles among the themes not in [KEY_THEMES_OFF]. */
+    private const val KEY_THEME_LOCKED = "theme_locked"
+    private const val KEY_THEMES_OFF = "themes_off"
 
     const val DEFAULT_INTERVAL_MINUTES = 20
     /** How long an untouched card notification stays before it is withdrawn, so its time doesn't count. */
@@ -181,13 +185,24 @@ object FocusSettings {
     fun setSnoozeLiftsGate(context: Context, enabled: Boolean) = prefs(context).edit().putBoolean(KEY_SNOOZE_LIFTS_GATE, enabled).apply()
 
     /** Whether anything needs the phone's use to be watched ([UsageMonitorService]). */
-    fun monitorWanted(context: Context): Boolean = nudgesEnabled(context) || gateEnabled(context)
+    /** The monitor runs for the nudges, the gate and Move's prompts ([MoveStore.promptsOn]). */
+    fun monitorWanted(context: Context): Boolean = nudgesEnabled(context) || gateEnabled(context) || MoveStore.promptsOn(context)
 
     // Look
 
     fun themeName(context: Context): String? = prefs(context).getString(KEY_THEME, null)
 
     fun setThemeName(context: Context, name: String) = prefs(context).edit().putString(KEY_THEME, name).apply()
+
+    fun themeLocked(context: Context): Boolean = prefs(context).getBoolean(KEY_THEME_LOCKED, false)
+
+    fun setThemeLocked(context: Context, locked: Boolean) = prefs(context).edit().putBoolean(KEY_THEME_LOCKED, locked).apply()
+
+    /** The themes left out of the shuffle. */
+    fun themesOff(context: Context): Set<String> = ThemeShuffle.decode(prefs(context).getString(KEY_THEMES_OFF, null))
+
+    fun setThemesOff(context: Context, off: Set<String>) =
+        prefs(context).edit().putString(KEY_THEMES_OFF, ThemeShuffle.encode(off)).apply()
 
     private fun prefs(context: Context): SharedPreferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 }

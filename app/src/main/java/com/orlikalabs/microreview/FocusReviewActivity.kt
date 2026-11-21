@@ -12,7 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.orlikalabs.microreview.ui.CardScreen
 import com.orlikalabs.microreview.ui.aero.AeroTheme
-import com.orlikalabs.microreview.ui.aero.AeroThemes
+import com.orlikalabs.microreview.ui.aero.ThemeVisit
 
 /**
  * The full-screen card ([FocusCardController]) as a screen of the app, opened from a notification: "Keep going"
@@ -39,7 +39,7 @@ class FocusReviewActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        val palette = AeroThemes.current(this)
+        val palette = ThemeVisit.arrive(this)
         val bars = if (palette.isDark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
         enableEdgeToEdge(bars, bars)
         super.onCreate(savedInstanceState)
@@ -59,6 +59,7 @@ class FocusReviewActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        ThemeVisit.started()
         isShown = true
         if (!started) {
             started = true
@@ -68,6 +69,7 @@ class FocusReviewActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        ThemeVisit.stopped()
         isShown = false
         controller.stop()
         // Not kept in the background.

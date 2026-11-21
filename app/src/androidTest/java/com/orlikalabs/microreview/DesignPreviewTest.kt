@@ -15,10 +15,12 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.LocalDate
 
 /**
  * Screenshots of every screen in every theme, with a fake AnkiDroid ([FakeAnkiDataSource]): the home screen, the
- * settings, the card (question, then answer), and the gate over another app. Written by the shell to
+ * settings, the card (question, then answer), the gate over another app, and Move (its screen, the guided session,
+ * the morning and evening prompts) with two weeks of made-up days. The theme is locked (no shuffle). Written by the shell to
  * [SHOTS] (`adb pull` it); the app's data is restored after ([AppDataSnapshot]).
  */
 @RunWith(AndroidJUnit4::class)
@@ -43,6 +45,24 @@ class DesignPreviewTest {
         FocusSettings.setNudgesEnabled(context, true)
         FocusSettings.setGateEnabled(context, true)
         FocusSettings.setGatedApps(context, setOf("com.android.settings"))
+        FocusSettings.setThemeLocked(context, true)
+        MoveStore.setPhase(context, MovePlan.Phase.RECOVERY)
+        // The prompts are shown by the test, not by the monitor.
+        MoveStore.setPromptsOn(context, false)
+        val today = LocalDate.now()
+        val spots = listOf(MovePlan.PainSpot.KNEE, MovePlan.PainSpot.KNEE, MovePlan.PainSpot.THIGH, MovePlan.PainSpot.THIGH, MovePlan.PainSpot.BUTTOCK)
+        val days = (13 downTo 1).map { back ->
+            MovePlan.Day(
+                today.minusDays(back.toLong()),
+                morning = back % 4 != 0,
+                evening = if (back % 5 == 0) null else "recovery",
+                walkMinutes = 20 + back,
+                pain = spots[(13 - back) * spots.size / 13],
+                trend = MovePlan.Trend.BETTER,
+            )
+        } + MovePlan.Day(today, pain = MovePlan.PainSpot.BUTTOCK, walkMinutes = 10)
+        context.getSharedPreferences("com.orlikalabs.microreview.move_log", Context.MODE_PRIVATE).edit()
+            .putString("log", MovePlan.encode(days)).commit()
         shell("mkdir -p $SHOTS")
         shell("appops set ${context.packageName} SYSTEM_ALERT_WINDOW allow")
     }
@@ -82,6 +102,33 @@ class DesignPreviewTest {
             shot("${palette.id}-7-gate")
             CardOverlay.onScreenOff(context)
             SystemClock.sleep(800)
+            ActivityScenario.launch(MoveActivity::class.java).use {
+                SystemClock.sleep(2_000)
+                shot("${palette.id}-8-move")
+                swipeUp()
+                SystemClock.sleep(1_200)
+                shot("${palette.id}-9-move-more")
+            }
+            ActivityScenario.launch<MoveActivity>(MoveActivity.sessionIntent(context)).use {
+                SystemClock.sleep(1_500)
+                shot("${palette.id}-10-session")
+                tapNext()
+                SystemClock.sleep(1_200)
+                shot("${palette.id}-11-session-hold")
+                tapCenter()
+                SystemClock.sleep(3_000)
+                shot("${palette.id}-12-holding")
+            }
+            CardOverlay.requestMove(context, MoveStore.Prompt.MORNING)
+            SystemClock.sleep(1_500)
+            shot("${palette.id}-13-morning")
+            CardOverlay.onScreenOff(context)
+            SystemClock.sleep(800)
+            CardOverlay.requestMove(context, MoveStore.Prompt.EVENING)
+            SystemClock.sleep(1_500)
+            shot("${palette.id}-14-evening")
+            CardOverlay.onScreenOff(context)
+            SystemClock.sleep(800)
         }
     }
 
@@ -98,6 +145,19 @@ class DesignPreviewTest {
         val bounds = context.getSystemService(WindowManager::class.java).maximumWindowMetrics.bounds
         val density = context.resources.displayMetrics.density
         shell("input tap ${bounds.width() / 2} ${bounds.height() - (136 * density).toInt()}")
+    }
+
+    /** Move's session: "Next", the wide button bottom right. */
+    private fun tapNext() {
+        val bounds = context.getSystemService(WindowManager::class.java).maximumWindowMetrics.bounds
+        val density = context.resources.displayMetrics.density
+        shell("input tap ${bounds.width() * 2 / 3} ${bounds.height() - (72 * density).toInt()}")
+    }
+
+    /** Move's hold timer, between the exercise's panel and the buttons. */
+    private fun tapCenter() {
+        val bounds = context.getSystemService(WindowManager::class.java).maximumWindowMetrics.bounds
+        shell("input tap ${bounds.width() / 2} ${bounds.height() * 62 / 100}")
     }
 
     private fun shell(command: String) {

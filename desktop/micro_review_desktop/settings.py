@@ -49,7 +49,7 @@ class SettingsDialog(QDialog):
         # Pairing
         pairing = QGroupBox("Your phone")
         form = QVBoxLayout(pairing)
-        form.addWidget(QLabel("In Micro Review Focus on your phone: bell icon › Your PC › Enter code."))
+        form.addWidget(QLabel("In Micro Review Focus on your phone: gear icon › Your PC › Enter code."))
         row = QHBoxLayout()
         self.code_label = QLabel(rules.display_code(controller.pairing_code()))
         self.code_label.setStyleSheet("font-family: monospace; font-size: 20px; font-weight: bold;")
@@ -85,6 +85,11 @@ class SettingsDialog(QDialog):
         self.idle = self._spin(10, 300, "input_within_seconds", " s")
         self.idle.setToolTip("No mouse or keyboard input for this long: you're away, the time doesn't count and no cards come.")
         form.addRow("Away after", self.idle)
+        self.stand_up = self._spin(0, 120, "stand_up_minutes", " min of sitting")
+        self.stand_up.setSpecialValueText("Off")
+        self.stand_up.setToolTip("A small window in the corner with a desk exercise. Stepping away from the keyboard "
+                                 "for a few minutes counts as a break; during a game, a notification instead.")
+        form.addRow("Stand up after", self.stand_up)
         self.decks = QListWidget()
         self.decks.setMinimumHeight(120)
         chosen = list(self.cfg["decks"])
@@ -193,6 +198,7 @@ class SettingsDialog(QDialog):
         cfg["cards_per_prompt"] = self.count.value()
         cfg["skips_per_day"] = self.skips.value()
         cfg["input_within_seconds"] = self.idle.value()
+        cfg["stand_up_minutes"] = self.stand_up.value()
         cfg["decks"] = [self.decks.item(i).text() for i in range(self.decks.count())
                         if self.decks.item(i).checkState() == Qt.CheckState.Checked]
         cfg["pass_fail_only"] = self.pass_fail.isChecked()

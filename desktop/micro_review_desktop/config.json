@@ -28,5 +28,6 @@
     "start_hidden": true,
     "keep_running_when_closed": true,
     "sync_after_cards": true,
-    "morning_hour": 7
+    "morning_hour": 7,
+    "stand_up_minutes": 25
 }

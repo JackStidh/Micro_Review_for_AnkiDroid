@@ -32,6 +32,7 @@ import com.orlikalabs.microreview.ui.SettingsState
 import com.orlikalabs.microreview.ui.aero.AeroPalette
 import com.orlikalabs.microreview.ui.aero.AeroTheme
 import com.orlikalabs.microreview.ui.aero.AeroThemes
+import com.orlikalabs.microreview.ui.aero.ThemeVisit
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.concurrent.thread
@@ -56,7 +57,7 @@ class FocusSettingsActivity : ComponentActivity(), SettingsActions {
     private var loadingApps = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        palette = AeroThemes.current(this)
+        palette = ThemeVisit.arrive(this)
         applyBars(palette)
         super.onCreate(savedInstanceState)
         state = read()
@@ -97,6 +98,7 @@ class FocusSettingsActivity : ComponentActivity(), SettingsActions {
         val until = FocusSettings.snoozeUntil(this)
         val asked = AnkiSync.requestedAt(this)
         return SettingsState(
+            themeChoice = AeroThemes.choice(this),
             missingUsage = monitorWanted && !FocusState.hasUsageAccess(this),
             missingOverlay = needsOverlay && !FocusState.canOpenOverApps(this),
             missingNotifications = FocusSettings.nudgesEnabled(this) && !notificationsAllowed(),
@@ -250,10 +252,32 @@ class FocusSettingsActivity : ComponentActivity(), SettingsActions {
         state = read()
     }
 
+    override fun onStart() {
+        super.onStart()
+        val arriving = ThemeVisit.arrive(this)
+        ThemeVisit.started()
+        if (arriving.id != palette.id) showTheme(arriving)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        ThemeVisit.stopped()
+    }
+
     override fun chooseTheme(palette: AeroPalette) {
-        AeroThemes.choose(this, palette)
-        this.palette = palette
-        applyBars(palette)
+        showTheme(AeroThemes.tap(this, palette))
+        state = read()
+    }
+
+    override fun toggleThemeLock() {
+        AeroThemes.toggleLock(this)
+        state = read()
+    }
+
+    private fun showTheme(shown: AeroPalette) {
+        if (shown.id == palette.id) return
+        palette = shown
+        applyBars(shown)
     }
 
     override fun copyDiagnostics() {

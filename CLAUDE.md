@@ -16,7 +16,7 @@ Micro Review for AnkiDroid is a small Android app that lets the user review Anki
   (`Focus*.kt`, `Nudge*.kt`, `CardOverlay.kt`, `GateRules.kt`, `QuietTime.kt`, `Interruptions.kt`, `BluetoothState.kt`,
   `NoteFields*.kt`, `UsageMonitorService.kt`), how they hook into the existing ones and what is still unverified are described in
   `docs/focus/NOTES.md`, with the Aero redesign (the four themes, `ui/aero/`, `ui/HomeScreen.kt`, `ui/SettingsScreen.kt`,
-  `ui/CardScreen.kt`) and what it removed. Read it before working on that branch. The desktop Anki add-on (Python, Anki 2.1.49+, Python 3.9 syntax)
+  `ui/CardScreen.kt`), what it removed, and Move (exercise habits). Read it before working on that branch. The desktop Anki add-on (Python, Anki 2.1.49+, Python 3.9 syntax)
   is in `desktop/`, described in `desktop/README.md`.
 
 ## Build & run
@@ -54,6 +54,8 @@ Single module `:app`, package (namespace) and application ID `com.orlikalabs.mic
 | `ui/DeckTree.kt` | Builds the deck tree from `Parent::Child` names and the list of visible (unfolded) rows. |
 | `ui/HomeScreen.kt` / `ui/SettingsScreen.kt` / `ui/CardScreen.kt` | The three screens, stateless Compose: home (status orb, actions, setup needs, next card, review order, deck tree, theme picker), Settings (`SettingsActions`, implemented by `FocusSettingsActivity`), and the card (`FocusCardController.Ui`) for the gate, nudges and sessions, shown by `CardOverlay` and `FocusReviewActivity`. |
 | `ui/aero/` | The Aero design system: `AeroTheme` (palettes: Sakura, Yoru, Mochi, Torii Sengoku; stored in `FocusSettings.themeName`), `AeroBackground` (animated scenes), `AeroComponents` (glass panels, gel buttons, orbs, switches, dialogs), `ThemePicker`, `OverlayComposeOwner` (Compose in a `WindowManager` window). See `docs/focus/NOTES.md`. |
+| `ThemeShuffle.kt` | Pure logic of the theme shuffle: the next theme among the ticked ones (never the same twice in a row), ticking (the last one stays), what counts as a new visit (`ThemeVisit` in `ui/aero/AeroTheme.kt`: back after 2 s away; a rotation or Settings and back keep the theme). Locked: always the one showing. |
+| `MovePlan.kt` / `MoveStore.kt` / `MoveText.kt` / `MoveActivity.kt` / `ui/MoveScreens.kt` | Move, exercise habits (see `docs/focus/NOTES.md`): `MovePlan` the pure part (exercises, routines per phase, the day log, warnings, when a prompt is due), `MoveStore` its storage (`move` backed up, `move_log` not), `MoveText` the `strings.xml` texts, `MoveActivity` the Move screen and the guided session, the prompts shown by `CardOverlay.requestMove` from the monitor (`UsageMonitorService.moveStep`). |
 | `DeckSelection.kt` | The selected decks in priority order (SharedPreferences `com.ankidroid.companion.deck_selection`). |
 | `CardStateController.kt` | Single entry point for the displayed card. `showNextCard()` finds the next card in the selected decks and stores it; its notification is only posted while a nudge is shown as a notification (`NudgeSession.isActive`), never on the lock screen. `syncWithAnkiDroid()` compares the displayed card with AnkiDroid's actual next card and only acts when needed (`CardSync`). Both do ContentProvider I/O (off the main thread) and are serialized. |
 | `CardSync.kt` | Pure decision of the sync: nothing, show the next card (or the first one once a deck is selected), show "Bravo", post the notification again (reboot, swiped away), or stop (no deck selected), plus the lock check throttle. |

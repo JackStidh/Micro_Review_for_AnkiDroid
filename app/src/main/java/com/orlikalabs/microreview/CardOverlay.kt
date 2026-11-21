@@ -22,6 +22,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import com.orlikalabs.microreview.ui.CardScreen
+import com.orlikalabs.microreview.ui.MovePromptScreen
+import com.orlikalabs.microreview.ui.MovePromptData
+import com.orlikalabs.microreview.ui.MovePromptActions
 import com.orlikalabs.microreview.ui.aero.AeroTheme
 import com.orlikalabs.microreview.ui.aero.AeroThemes
 import com.orlikalabs.microreview.ui.aero.OverlayComposeOwner
@@ -50,6 +53,10 @@ object CardOverlay {
 
     @Volatile
     private var shownApp: String? = null
+
+    /** Move's prompt shown instead of a card ([requestMove]). */
+    @Volatile
+    private var shownMove: MoveStore.Prompt? = null
 
     private var window: View? = null
     private var controller: FocusCardController? = null
@@ -92,6 +99,8 @@ object CardOverlay {
             return
         }
         if (isShowing) {
+            // Move's prompt stays unless the gate needs the screen.
+            if (shownMove != null && mode != FocusCardController.Mode.GATE) return
             if (mode == shownMode && app == shownApp) return
             // A gate isn't replaced by a nudge: it asks for cards already.
             if (shownMode == FocusCardController.Mode.GATE && mode != FocusCardController.Mode.GATE) return
@@ -118,25 +127,15 @@ object CardOverlay {
             }
         }
         val card = FocusCardController(themed, host)
-        val palette = AeroThemes.current(context)
+        // Each card screen in another theme, unless it is locked.
+        val palette = AeroThemes.shuffle(context)
         syncing.value = false
         frame.addView(
             composeView(themed) { AeroTheme(palette) { CardScreen(card.ui, card, syncing.value) } },
             FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
         )
         attachOwner(frame)
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
-            PixelFormat.OPAQUE,
-        ).apply {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-            }
-            title = "Micro Review card"
-        }
+        val params = windowParams("Micro Review card")
         try {
             windowManager(context).addView(frame, params)
         } catch (e: Exception) {
@@ -167,6 +166,7 @@ object CardOverlay {
         isShowing = false
         shownMode = null
         shownApp = null
+        shownMove = null
         val syncing = closedByUser && AnkiSync.isDueAfterCards(context) && AnkiSync.request(context, "after cards")
         if (syncing) {
             // AnkiDroid shows its deck list for a moment: this window stays over it, under the veil, then fades out.
@@ -203,6 +203,94 @@ object CardOverlay {
         val owner = OverlayComposeOwner()
         owner.attachTo(frame)
         owners[frame] = owner
+    }
+
+    /** A full-screen window over the app in use. */
+    private fun windowParams(title: String) = WindowManager.LayoutParams(
+        WindowManager.LayoutParams.MATCH_PARENT,
+        WindowManager.LayoutParams.MATCH_PARENT,
+        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+        PixelFormat.OPAQUE,
+    ).apply {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+        this.title = title
+    }
+
+    /** Shows Move's [prompt] (the morning check-in, the evening routine) in the card's window, from any thread. */
+    fun requestMove(context: Context, prompt: MoveStore.Prompt) {
+        val appContext = context.applicationContext
+        main.post { showMove(appContext, prompt) }
+    }
+
+    private fun showMove(context: Context, prompt: MoveStore.Prompt) {
+        if (!FocusState.canOpenOverApps(context) || isShowing) return
+        val themed = ContextThemeWrapper(context, R.style.Theme_AnkiNotifications)
+        val frame = OverlayFrame(themed) {
+            MoveStore.later(context, prompt)
+            dismiss(context, closedByUser = false)
+        }
+        val today = MoveStore.today(context)
+        val days = MoveStore.days(context)
+        val data = MovePromptData(
+            prompt = prompt,
+            pain = today?.pain,
+            trend = today?.trend,
+            session = MoveStore.session(context),
+            streak = MovePlan.streak(days, java.time.LocalDate.now()),
+            warning = MoveStore.warning(context),
+        )
+        val actions = object : MovePromptActions {
+            override fun pain(spot: MovePlan.PainSpot) = MoveStore.updateToday(context) { it.copy(pain = spot) }
+
+            override fun trend(trend: MovePlan.Trend) = MoveStore.updateToday(context) { it.copy(trend = trend) }
+
+            override fun pressUpsDone() {
+                MoveStore.updateToday(context) { it.copy(morning = true) }
+                dismiss(context, closedByUser = false)
+            }
+
+            override fun start() {
+                try {
+                    // Allowed while this window is visible.
+                    context.startActivity(MoveActivity.sessionIntent(context).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                } catch (e: Exception) {
+                    FocusLog.i(context, "couldn't open Move: $e")
+                }
+                dismiss(context, closedByUser = false)
+            }
+
+            override fun later() {
+                MoveStore.later(context, prompt)
+                dismiss(context, closedByUser = false)
+            }
+
+            override fun notToday() {
+                MoveStore.setAside(context, prompt)
+                dismiss(context, closedByUser = false)
+            }
+        }
+        val palette = AeroThemes.shuffle(context)
+        frame.addView(
+            composeView(themed) { AeroTheme(palette) { MovePromptScreen(data, actions) } },
+            FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
+        )
+        attachOwner(frame)
+        try {
+            windowManager(context).addView(frame, windowParams("Micro Review move"))
+        } catch (e: Exception) {
+            FocusLog.i(context, "can't show the move prompt: $e")
+            owners.remove(frame)?.destroy()
+            return
+        }
+        window = frame
+        isShowing = true
+        shownMode = null
+        shownApp = null
+        shownMove = prompt
+        FocusLog.i(context, "move prompt shown: ${prompt.name.lowercase()}")
     }
 
     /** How long the overlay stays over AnkiDroid's moment in front after a sync request, then fades. */

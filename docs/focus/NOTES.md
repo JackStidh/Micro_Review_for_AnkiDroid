@@ -22,7 +22,8 @@ checked on a real build and a real phone.
 | **Pause while the PC is in use**: paired with Micro Review Desktop (`desktop/`), cards and the gate pause until 5 minutes after the PC's last input, read from an ntfy.sh topic just before a card or a gate. | `PcActivity`, `PcPairing` |
 | **AnkiDroid sync**: answers given here stayed on the phone until AnkiDroid was opened (it only syncs then). AnkiDroid takes a `DO_SYNC` request from other apps but only through its screen (it shows its deck list for a moment): there is no unseen sync. So the phone only asks as a card screen closes, hidden under it (the screen stays 1.5 s under a "Syncing" veil, then fades): when answers were given, or the PC synced since; only online; or "Sync now". AnkiDroid ignores requests less than 2 min apart (answers left over go as the next card screen closes). The phone and the PC both review, so neither may show a card the other already reviewed: Micro Review Desktop posts "synced" with the cards it reviewed (`mrf-<code>-sync`, `synced <nid>:<ord>,...`), the phone reads it while in use (at most every 2 min) and as a card screen opens, and passes over those cards, and refuses an answer to one, until its next sync request (`AnkiSync.skipped`). AnkiDroid's moment in front doesn't end a gate pass. Not covered: a sync AnkiDroid takes but doesn't do (not logged in, metered network) lets those cards back. | `AnkiSync`, `AnkiSyncRules`, `PcActivity.refreshPcSync`, `AnkiDroidHelper` |
 | **Settings screen** with a checklist of what still has to be allowed. Gear orb on the home screen. | `FocusSettingsActivity`, `ui/SettingsScreen.kt` |
-| **Aero look**: four themes (see below), chosen on the home screen or in Settings. | `ui/aero/` |
+| **Aero look**: four themes (see below), shuffled each time the app or a card opens, among the ticked ones; the padlock keeps the one showing. | `ui/aero/`, `ThemeShuffle` |
+| **Move**: exercise habits in small doses (see below): a morning check-in and press-ups, an evening routine with a guided hold timer, the walk, and stand-up breaks from the PC add-on. Off until a program is picked. | `Move*.kt`, `ui/MoveScreens.kt`, `desktop/.../breaks.py` |
 
 ## How it fits the existing app
 
@@ -77,6 +78,34 @@ Glass and gel in the style of a Japanese phone app around 2008: every screen is 
 The kanji are decoration (`translatable="false"` in `strings.xml`); every text a user reads is English beside
 them. Screenshots of every theme: push to `redesign` (or run "Design preview" on a branch): `DesignPreviewTest`
 takes them on an emulator and `design-preview.yml` puts them on the `design-shots` branch.
+
+
+## Move
+
+Exercise habits delivered like the cards: prompted when the phone is in use, a few minutes at a time.
+
+- **Programs** (`MovePlan`): Recovery, for disc-related back and leg pain (McKenzie press-ups and standing extensions,
+  McGill bird dog, side plank and curl-up, bridges, hip hinge practice, walking, plus posture, hip and foot work that
+  loads nothing), and Rebuild (strength every other day at most, bodyweight in weeks 1 and 2, a light loaded hinge
+  and carries from week 3, the recovery set as the warm-up). Picked on the Move screen; Move is off until then (a
+  friend using the app gets nothing they didn't choose). Rebuild is started by hand, after a readiness note.
+- **Morning**: the first unlock between 4:00 and 13:00 after the phone wasn't used for 3 hours (a glance at the lock
+  screen doesn't count) shows the check-in (where the leg pain reaches, better or worse than yesterday), the
+  "no bending forward for the first hour" reminder and the press-ups. **Evening**: from the chosen time (19:00 by
+  default), at most 3 times, "Later" waits 45 minutes. Both in the card's window (`CardOverlay.requestMove`), held
+  back by a snooze, a call, Do Not Disturb and a Bluetooth pause, not by quiet hours or the PC; never over the app
+  itself or AnkiDroid, never over a card, and a nudge doesn't replace them (the gate does).
+- **Guided session** (`MoveActivity`, `MoveSessionScreen`): one exercise at a time, a timer orb for the holds (a
+  tick and a buzz at the end), right side then left, and a stop after each part (the rehab set alone counts).
+- **Warnings** (`MovePlan.warning`): the pain back at the knee or lower three mornings running after being higher
+  (back off), or worse the morning after a strength session. The rules and the emergency signs are on the screen.
+- **Log**: the last 60 days in `move_log` (not backed up, like the rest of the state); the choices in `move`
+  (backed up). The exercise texts are in `strings.xml` (`move_<id>_name`, `_dose`, `_how`), looked up by `MoveText`.
+- **PC**: the add-on's stand-up break (`breaks.py`) after `stand_up_minutes` of sitting, with the desk exercises in
+  the same order as `MovePlan.DESK` (a desktop test checks it).
+
+Not verified on a device: the morning arming over a real night, the tone's volume, the hold orb's position for the
+screenshot test's taps.
 
 ## To check on the phone
 

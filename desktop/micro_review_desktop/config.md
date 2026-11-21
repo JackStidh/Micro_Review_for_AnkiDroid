@@ -15,3 +15,4 @@ Micro Review Desktop: a few cards every so often while you use your PC. Easier t
 - `keep_running_when_closed`: the window's close button keeps Anki in the tray (File › Exit still quits).
 - `sync_after_cards`: sync with AnkiWeb before the cards (the phone's latest answers) and after them, if you're logged in, in the background, then tell the phone to sync too.
 - `morning_hour`: when "Snooze › Until tomorrow" ends.
+- `stand_up_minutes`: after this many minutes of sitting at the PC, a stand-up break with a desk exercise (0: off). A few minutes without input counts as a break; so does stepping away while it shows.

@@ -25,8 +25,9 @@ Cards come from Anki's own scheduler and look as in Anki's reviewer (template, s
 
 | File | Role |
 |---|---|
-| `controller.py` | The 5-second tick: time of use, snooze, online check, game check, the phone; quiet syncs (`col.sync_collection` in the background, Anki 2.1.66+; Anki's own sync before); tray, autostart, close to tray (and Anki kept running when the card window closes with Anki's window hidden). |
+| `controller.py` | The 5-second tick: time of use, sitting time and stand-up breaks, snooze, online check, game check, the phone; quiet syncs (`col.sync_collection` in the background, Anki 2.1.66+; Anki's own sync before); tray, autostart, close to tray (and Anki kept running when the card window closes with Anki's window hidden). |
 | `prompt.py` | The card window (`CardPrompt`). |
+| `breaks.py` | The stand-up break (`BreakPrompt`): after `stand_up_minutes` of sitting (`SittingClock`: time without input counts until 3 minutes, which is a break), a small window top right that doesn't take the keyboard, with the next desk exercise (`DESK_MOVES`, the phone's Move desk breaks, in turn). Done, "5 min", or stepping away from the keyboard (counted once there was input after it appeared). During a game, a tray notification instead. |
 | `cards.py` | Cards through `col.sched` (`getCard`, `answerCard`, `nextIvlStr`, `bury_cards`), in the chosen decks; the current deck is put back afterwards. |
 | `windows.py` | Idle time (`GetLastInputInfo`), games (Steam's `RunningAppID`, windows and processes, full screen), the `Run` registry key. Answers "nothing" elsewhere. |
 | `relay.py` | ntfy.sh: tells the phone how many seconds to stay paused, and that the PC synced; online check. |

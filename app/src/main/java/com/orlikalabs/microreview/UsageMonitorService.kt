@@ -59,6 +59,9 @@ class UsageMonitorService : Service() {
     private var lastSyncAt = 0L
     private var shownState: String? = null
     private var loggedPause: Interruptions.Reason? = null
+
+    /** Unlocked since the screen came on: the phone was used, not just glanced at. */
+    private var usedSinceScreenOn = false
     private var loggedNoOverlay: String? = null
     private var lastSyncCheck = 0L
 
@@ -134,6 +137,9 @@ class UsageMonitorService : Service() {
     /** The screen is on: watch until it goes off. */
     private fun startPolling() {
         if (polling || !powerManager().isInteractive) return
+        // After a night: Move's morning prompt is armed for the first unlock.
+        MoveStore.onScreenOn(this)
+        usedSinceScreenOn = false
         polling = true
         MonitorStatus.polling = true
         lastTick = SystemClock.elapsedRealtime()
@@ -149,6 +155,8 @@ class UsageMonitorService : Service() {
     private fun stopPolling() {
         if (!polling) return
         polling = false
+        // When the phone was last used: a glance at the lock screen doesn't count.
+        if (usedSinceScreenOn) MoveStore.onScreenOff(this)
         MonitorStatus.polling = false
         handler.removeCallbacks(pollTask)
         NudgeSession.withdraw(this)
@@ -182,6 +190,7 @@ class UsageMonitorService : Service() {
         MonitorStatus.lastStepAt = System.currentTimeMillis()
         // On the lock screen: nothing is used, nothing counts, but keep looking until it is unlocked.
         if (keyguardManager().isKeyguardLocked) return
+        usedSinceScreenOn = true
 
         val recheck = recheckAt
         if (recheck != 0L && now >= recheck) {
@@ -198,7 +207,12 @@ class UsageMonitorService : Service() {
             gate(current)
         }
         NudgeSession.reconcile(this)
-        if (FocusSettings.nudgesEnabled(this)) nudgeStep(elapsed) else MonitorStatus.nextCardMs = null
+        val moved = moveStep()
+        if (FocusSettings.nudgesEnabled(this)) {
+            if (!moved) nudgeStep(elapsed)
+        } else {
+            MonitorStatus.nextCardMs = null
+        }
         relayStep(now)
         updateNotification(now)
     }
@@ -214,6 +228,27 @@ class UsageMonitorService : Service() {
         lastSyncCheck = now
         if (CardOverlay.isShowing || FocusReviewActivity.isShown) return
         PcActivity.refreshPcSync(this, PC_SYNC_FRESH_MS)
+    }
+
+    /**
+     * Move's morning or evening prompt ([MoveStore.duePrompt]), in the card's window, when nothing else is shown and
+     * the user isn't reviewing. Held back like a card by a snooze, a call, Do Not Disturb and a Bluetooth pause, but not
+     * by quiet hours or the PC. Returns whether one is shown.
+     */
+    private fun moveStep(): Boolean {
+        if (CardOverlay.isShowing || FocusReviewActivity.isShown || MoveActivity.isShown || NudgeSession.isBusy(this)) return false
+        val app = known
+        if (app == packageName || app == ANKIDROID_PACKAGE) return false
+        val prompt = MoveStore.duePrompt(this) ?: return false
+        when (FocusState.pauseReason(this)) {
+            null, Interruptions.Reason.QUIET_HOURS, Interruptions.Reason.PC_IN_USE -> Unit
+            else -> return false
+        }
+        if (!FocusState.canOpenOverApps(this)) return false
+        MoveStore.prompted(this, prompt)
+        FocusLog.i(this, "move prompt: ${prompt.name.lowercase()}")
+        CardOverlay.requestMove(this, prompt)
+        return true
     }
 
     private fun nudgeStep(elapsed: Long) {

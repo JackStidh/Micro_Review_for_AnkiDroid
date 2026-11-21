@@ -184,3 +184,52 @@ def test_reviews_since_the_last_message_within_the_relays_12_hours():
     assert rules.reviews_since(now - 60_000, now) == now - 60_000
     assert rules.reviews_since(1, now) == now - rules.SYNCED_LOOKBACK_MS
 
+
+def test_sitting_counts_quiet_time_until_away():
+    clock = rules.SittingClock()
+    for _ in range(12):
+        clock.tick(5, idle_seconds=100)  # reading: no input, still sitting
+    assert clock.seconds == 60
+    clock.tick(5, idle_seconds=rules.AWAY_SECONDS)  # up and away
+    assert clock.seconds == 0
+
+
+def test_sitting_starts_over_after_a_sleep():
+    clock = rules.SittingClock(seconds=1000)
+    clock.tick(3600, idle_seconds=0)
+    assert clock.seconds == 0
+
+
+def test_stand_up_due():
+    clock = rules.SittingClock(seconds=25 * 60)
+    assert clock.due(25)
+    assert not clock.due(30)
+    assert not clock.due(0)  # off
+    assert clock.minutes() == 25
+
+
+def test_desk_moves_go_round_and_match_the_phone():
+    assert rules.desk_move(0).id == "standing_extension"
+    assert rules.desk_move(len(rules.DESK_MOVES)) == rules.desk_move(0)
+    # The same order as MovePlan.DESK in the app.
+    plan = open(os.path.join(os.path.dirname(__file__), "..", "..", "app", "src", "main", "java", "com", "orlikalabs",
+                             "microreview", "MovePlan.kt"), encoding="utf-8").read()
+    desk = plan.split("val DESK = listOf(")[1].split(")")[0]
+    names = {
+        "STANDING_EXTENSION": "standing_extension", "WALK_BREAK": "walk_break", "CHIN_TUCK": "chin_tuck",
+        "PEC_STRETCH": "pec_stretch", "HINGE": "hinge", "CALF_RAISE": "calf_raise",
+        "STANDING_HIP_FLEXOR": "standing_hip_flexor", "WALL_ANGEL": "wall_angel", "SCAP_SQUEEZE": "scap_squeeze",
+    }
+    assert [names[n.strip()] for n in desk.split(",")] == [m.id for m in rules.DESK_MOVES]
+
+
+def test_stepped_away_only_after_input_while_shown():
+    # Input 10 s after the window appeared, then 50 s of nothing: stood up.
+    assert rules.stepped_away(idle_seconds=50, shown_seconds=60)
+    # Reading since before it appeared: no word from the user yet.
+    assert not rules.stepped_away(idle_seconds=70, shown_seconds=20)
+    # Still typing.
+    assert not rules.stepped_away(idle_seconds=2, shown_seconds=120)
+    # Long enough to be away regardless.
+    assert rules.stepped_away(idle_seconds=rules.AWAY_SECONDS, shown_seconds=10)
+
