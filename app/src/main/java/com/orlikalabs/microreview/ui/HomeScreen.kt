@@ -312,7 +312,7 @@ private fun Hero(status: HomeStatus, due: Int, snoozeMinutes: Int, actions: Home
             if (snoozed) {
                 GelButton(stringResource(R.string.monitor_resume), actions.onResume, Modifier.weight(1f), tone = GelTone.PASS, glyph = stringResource(R.string.kanji_resume))
             } else {
-                GelButton(stringResource(R.string.home_snooze, snoozeMinutes), actions.onSnooze, Modifier.weight(1f), tone = GelTone.GOLD, glyph = stringResource(R.string.kanji_snooze))
+                GelButton(stringResource(R.string.home_snooze), actions.onSnooze, Modifier.weight(1f), tone = GelTone.GOLD, glyph = stringResource(R.string.kanji_snooze), detail = stringResource(R.string.home_snooze_for, snoozeMinutes))
             }
         }
         Spacer(Modifier.height(10.dp))

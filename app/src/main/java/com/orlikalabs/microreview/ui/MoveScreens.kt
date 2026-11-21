@@ -113,34 +113,52 @@ interface MovePromptActions {
 @Composable
 fun MovePromptScreen(data: MovePromptData, actions: MovePromptActions) {
     val insets = WindowInsets.safeDrawing.asPaddingValues()
+    val morning = data.prompt == MoveStore.Prompt.MORNING
     AeroBackground(Modifier.fillMaxSize()) {
         Column(
             Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(start = 18.dp, end = 18.dp, top = insets.calculateTopPadding() + 18.dp, bottom = insets.calculateBottomPadding() + 18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(start = 18.dp, end = 18.dp, top = insets.calculateTopPadding() + 18.dp, bottom = insets.calculateBottomPadding() + 14.dp),
         ) {
-            val morning = data.prompt == MoveStore.Prompt.MORNING
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Seal(stringResource(if (morning) R.string.kanji_morning else R.string.kanji_evening), 58.dp)
-                Spacer(Modifier.width(14.dp))
-                Column {
-                    Text(
-                        stringResource(if (morning) R.string.move_good_morning else R.string.move_evening_prompt),
-                        style = AeroText.title(28).copy(fontWeight = FontWeight.ExtraBold, shadow = titleShadow(LocalAero.current)),
-                    )
-                    Text(stringResource(R.string.move_subtitle), style = AeroText.soft(13))
+            // What to read scrolls; what to do stays at the bottom, always in view.
+            Column(
+                Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Seal(stringResource(if (morning) R.string.kanji_morning else R.string.kanji_evening), 58.dp)
+                    Spacer(Modifier.width(14.dp))
+                    Column {
+                        Text(
+                            stringResource(if (morning) R.string.move_good_morning else R.string.move_evening_prompt),
+                            style = AeroText.title(28).copy(fontWeight = FontWeight.ExtraBold, shadow = titleShadow(LocalAero.current)),
+                        )
+                        Text(stringResource(R.string.move_subtitle), style = AeroText.soft(13))
+                    }
+                }
+                data.warning?.let { WarningPanel(it) }
+                if (morning) {
+                    GlassPanel(Modifier.fillMaxWidth(), tint = LocalAero.current.gold.copy(alpha = 0.18f)) {
+                        Text(stringResource(R.string.move_first_hour), style = AeroText.body(16))
+                    }
+                    GlassPanel(Modifier.fillMaxWidth()) {
+                        CheckIn(data.pain, data.trend, actions::pain, actions::trend)
+                    }
+                } else {
+                    GlassPanel(Modifier.fillMaxWidth()) {
+                        Text(
+                            stringResource(R.string.move_evening_prompt_detail, stringResource(sessionText(data.session))),
+                            style = AeroText.body(16),
+                        )
+                        if (data.streak > 0) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(stringResource(R.string.move_streak, data.streak), style = AeroText.soft(14))
+                        }
+                    }
                 }
             }
-            data.warning?.let { WarningPanel(it) }
+            Spacer(Modifier.height(12.dp))
             if (morning) {
-                GlassPanel(Modifier.fillMaxWidth(), tint = LocalAero.current.gold.copy(alpha = 0.18f)) {
-                    Text(stringResource(R.string.move_first_hour), style = AeroText.body(16))
-                }
-                GlassPanel(Modifier.fillMaxWidth()) {
-                    CheckIn(data.pain, data.trend, actions::pain, actions::trend)
-                }
                 GelButton(
                     stringResource(R.string.move_press_ups_done),
                     actions::pressUpsDone,
@@ -150,18 +168,9 @@ fun MovePromptScreen(data: MovePromptData, actions: MovePromptActions) {
                     detail = stringResource(R.string.move_press_up_name),
                 )
             } else {
-                GlassPanel(Modifier.fillMaxWidth()) {
-                    Text(
-                        stringResource(R.string.move_evening_prompt_detail, stringResource(sessionText(data.session))),
-                        style = AeroText.body(16),
-                    )
-                    if (data.streak > 0) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(stringResource(R.string.move_streak, data.streak), style = AeroText.soft(14))
-                    }
-                }
                 GelButton(stringResource(R.string.move_start), actions::start, Modifier.fillMaxWidth(), tone = GelTone.PASS, glyph = stringResource(R.string.kanji_move))
             }
+            Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 GelButton(stringResource(R.string.move_later), actions::later, Modifier.weight(1f), tone = GelTone.GOLD, compact = true)
                 GelButton(stringResource(R.string.move_not_today), actions::notToday, Modifier.weight(1f), tone = GelTone.NEUTRAL, compact = true)

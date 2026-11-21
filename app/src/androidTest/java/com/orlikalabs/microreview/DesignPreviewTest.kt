@@ -87,6 +87,8 @@ class DesignPreviewTest {
             ActivityScenario.launch(FocusSettingsActivity::class.java).use {
                 SystemClock.sleep(2_000)
                 shot("${palette.id}-3-settings")
+                toTheBottom()
+                shot("${palette.id}-3b-settings-theme")
             }
             ActivityScenario.launch<FocusReviewActivity>(FocusReviewActivity.sessionIntent(context)).use {
                 SystemClock.sleep(2_500)
@@ -130,6 +132,22 @@ class DesignPreviewTest {
             CardOverlay.onScreenOff(context)
             SystemClock.sleep(800)
         }
+        // The picker shuffling, one theme out (the theme shown is then any of the others).
+        FocusSettings.setThemeLocked(context, false)
+        FocusSettings.setThemesOff(context, setOf("mochi"))
+        ActivityScenario.launch(FocusSettingsActivity::class.java).use {
+            SystemClock.sleep(2_000)
+            toTheBottom()
+            shot("z-settings-theme-shuffle")
+        }
+    }
+
+    private fun toTheBottom() {
+        repeat(8) {
+            swipeUp()
+            SystemClock.sleep(500)
+        }
+        SystemClock.sleep(800)
     }
 
     private fun shot(name: String) = shell("screencap -p $SHOTS/$name.png")

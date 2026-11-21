@@ -227,7 +227,8 @@
     <string name="home_pc_paired">PC paired</string>
     <string name="home_answers_waiting">Answers to sync</string>
     <string name="home_card_now">Card now</string>
-    <string name="home_snooze">Snooze %1$d min</string>
+    <string name="home_snooze">Snooze</string>
+    <string name="home_snooze_for">%1$d min</string>
     <string name="home_snoozed">Snoozed until %1$s</string>
     <string name="home_snoozed_detail">No cards until then.</string>
     <string name="home_paused">Paused</string>
