@@ -357,12 +357,23 @@ fun Beads(done: Int, total: Int, modifier: Modifier = Modifier) {
 @Composable
 fun SectionTitle(kanji: String, title: String, subtitle: String? = null, modifier: Modifier = Modifier) {
     val p = LocalAero.current
-    Row(modifier.padding(top = 18.dp, bottom = 8.dp, start = 4.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier
+            .padding(top = 14.dp, bottom = 6.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .drawBehind {
+                // A backdrop, darker or lighter than the scene, fading out to the right.
+                val back = if (p.isDark) Color.Black.copy(alpha = 0.38f) else Color.White.copy(alpha = 0.5f)
+                drawRect(Brush.horizontalGradient(listOf(back, back.copy(alpha = back.alpha * 0.55f))))
+            }
+            .padding(start = 6.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Seal(kanji, 40.dp)
         Spacer(Modifier.width(12.dp))
         Column {
-            Text(title, style = TextStyle(color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = p.headings, shadow = titleShadow(p)))
-            if (subtitle != null) Text(subtitle, style = TextStyle(color = p.inkSoft, fontSize = 13.sp))
+            Text(title, style = TextStyle(color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = p.headings, shadow = halo(p)))
+            if (subtitle != null) Text(subtitle, style = TextStyle(color = p.inkSoft, fontSize = 13.sp, shadow = halo(p)))
         }
     }
 }
@@ -408,7 +419,12 @@ fun Pill(text: String, modifier: Modifier = Modifier, color: Color? = null) {
             .border(1.dp, c.copy(alpha = 0.5f), RoundedCornerShape(50))
             .padding(horizontal = 10.dp, vertical = 3.dp),
     ) {
-        Text(text, style = TextStyle(color = if (color != null && !p.isDark) lerp(c, Color.Black, 0.25f) else c, fontSize = 12.sp, fontWeight = FontWeight.SemiBold))
+        Text(
+            text,
+            style = TextStyle(color = if (color != null && !p.isDark) lerp(c, Color.Black, 0.25f) else if (p.isDark) lerp(c, Color.White, 0.25f) else c, fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
+            maxLines = 1,
+            softWrap = false,
+        )
     }
 }
 
@@ -432,7 +448,7 @@ fun AeroDialog(
                     Seal(kanji, 34.dp)
                     Spacer(Modifier.width(10.dp))
                 }
-                Text(title, style = TextStyle(color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = p.headings))
+                Text(title, style = TextStyle(color = p.ink, shadow = halo(p), fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = p.headings))
             }
             Spacer(Modifier.size(14.dp))
             Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), content = content)
@@ -469,11 +485,18 @@ fun ChoiceDialog(title: String, options: List<String>, selected: Int, onPick: (I
 /** The text styles of the screens, from the palette. */
 object AeroText {
     @Composable
-    fun title(size: Int = 18) = TextStyle(color = LocalAero.current.ink, fontSize = size.sp, fontWeight = FontWeight.Bold, fontFamily = LocalAero.current.headings)
+    fun title(size: Int = 18) = TextStyle(color = LocalAero.current.ink, fontSize = size.sp, fontWeight = FontWeight.Bold, fontFamily = LocalAero.current.headings, shadow = halo(LocalAero.current))
 
     @Composable
-    fun body(size: Int = 15) = TextStyle(color = LocalAero.current.ink, fontSize = size.sp)
+    fun body(size: Int = 15) = TextStyle(color = LocalAero.current.ink, fontSize = size.sp, shadow = halo(LocalAero.current))
 
     @Composable
-    fun soft(size: Int = 13) = TextStyle(color = LocalAero.current.inkSoft, fontSize = size.sp)
+    fun soft(size: Int = 13) = TextStyle(color = LocalAero.current.inkSoft, fontSize = size.sp, shadow = halo(LocalAero.current))
 }
+
+/**
+ * A soft halo behind text, so it reads over any part of a scene (a lit tower, the sun, a cloud): dark behind the
+ * light text of the night themes, light behind the dark text of the day ones.
+ */
+fun halo(p: AeroPalette): Shadow =
+    if (p.isDark) Shadow(Color.Black.copy(alpha = 0.75f), Offset(0f, 1.5f), 7f) else Shadow(Color.White.copy(alpha = 0.95f), Offset(0f, 0.5f), 6f)

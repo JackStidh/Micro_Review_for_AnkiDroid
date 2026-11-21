@@ -9,6 +9,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -504,11 +505,12 @@ private fun DeckTreeRow(
 private const val MAX_INDENT_LEVELS = 4
 
 /** New, learning, review, as little glossy counters, colored as in AnkiDroid's deck list. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DeckCounts(deck: DeckItem) {
     if (deck.newCount == null || deck.learnCount == null || deck.reviewCount == null) return
     val p = LocalAero.current
-    Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Pill(stringResource(R.string.count_new, deck.newCount), color = if (deck.newCount > 0) Color(0xFF2196F3) else p.inkSoft)
         Pill(stringResource(R.string.count_learn, deck.learnCount), color = if (deck.learnCount > 0) Color(0xFFE53935) else p.inkSoft)
         Pill(stringResource(R.string.count_review, deck.reviewCount), color = if (deck.reviewCount > 0) Color(0xFF43A047) else p.inkSoft)

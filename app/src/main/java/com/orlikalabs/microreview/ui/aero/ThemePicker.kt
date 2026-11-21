@@ -156,7 +156,7 @@ private fun ThemeTile(
             ),
             maxLines = 2,
         )
-        Text(palette.reading, style = TextStyle(color = current.inkSoft, fontSize = 11.sp))
+        Text(palette.reading, style = TextStyle(color = current.inkSoft, fontSize = 11.sp, shadow = halo(current)))
     }
 }
 

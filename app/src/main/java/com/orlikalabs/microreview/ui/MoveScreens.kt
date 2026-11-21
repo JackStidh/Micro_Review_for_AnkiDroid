@@ -8,6 +8,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.background
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -570,26 +574,99 @@ private fun Desk() {
     }
 }
 
-/** An exercise: its name and dose; tapped, how it's done. */
+/** An exercise: its little figure, name and dose; tapped, its guide. */
 @Composable
 private fun MoveRow(move: MovePlan.Move) {
     var open by rememberSaveable(move.id) { mutableStateOf(false) }
-    Column(
+    Row(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .clickable { open = !open }
-            .padding(horizontal = 4.dp, vertical = 8.dp),
+            .clickable { open = true }
+            .padding(horizontal = 4.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(MoveText.name(move)), style = AeroText.body(15).copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.weight(1f))
-            Text(stringResource(MoveText.dose(move)), style = AeroText.soft(13), textAlign = TextAlign.End, modifier = Modifier.widthIn(max = 160.dp))
+        MoveFigure(move, Modifier.size(width = 64.dp, height = 44.dp))
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(MoveText.name(move)), style = AeroText.body(15).copy(fontWeight = FontWeight.SemiBold))
+            Text(stringResource(MoveText.dose(move)), style = AeroText.soft(13))
         }
-        if (open) {
-            Spacer(Modifier.height(6.dp))
-            Text(stringResource(MoveText.how(move)), style = AeroText.soft(14))
+        Text("›", style = AeroText.title(22).copy(color = LocalAero.current.inkSoft))
+    }
+    if (open) MoveGuide(move) { open = false }
+}
+
+/**
+ * An exercise's guide: the figure doing it, what it's for, the steps one by one, where it should be felt and the
+ * usual mistakes. Full screen, on solid glass.
+ */
+@Composable
+fun MoveGuide(move: MovePlan.Move, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        val insets = WindowInsets.safeDrawing.asPaddingValues()
+        val p = LocalAero.current
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(start = 12.dp, end = 12.dp, top = insets.calculateTopPadding() + 12.dp, bottom = insets.calculateBottomPadding() + 12.dp),
+        ) {
+            GlassPanel(Modifier.fillMaxSize(), corner = 30.dp, solid = true, padding = PaddingValues(0.dp)) {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(MoveText.name(move)), style = AeroText.title(24).copy(shadow = titleShadow(p)))
+                            Spacer(Modifier.height(4.dp))
+                            Pill(stringResource(MoveText.dose(move)), color = p.accent)
+                        }
+                        Orb(onDismiss, size = 44.dp, contentDescription = stringResource(R.string.move_close)) {
+                            Icon(Icons.Filled.Close, stringResource(R.string.move_close), tint = orbInk(), modifier = Modifier.size(22.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    MoveFigure(
+                        move,
+                        Modifier
+                            .fillMaxWidth()
+                            .height(190.dp)
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(Brush.verticalGradient(listOf(p.sky.first().copy(alpha = 0.55f), p.sky.last().copy(alpha = 0.35f)))),
+                    )
+                    GuideSection(stringResource(R.string.move_guide_what)) {
+                        Text(stringResource(MoveText.what(move)), style = AeroText.body(15))
+                    }
+                    GuideSection(stringResource(R.string.move_guide_steps)) {
+                        stringResource(MoveText.steps(move)).split('\n').forEachIndexed { index, step ->
+                            Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.Top) {
+                                Box(
+                                    Modifier.size(24.dp).clip(RoundedCornerShape(12.dp)).background(Brush.verticalGradient(listOf(p.accent, p.accentDeep))),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text("${index + 1}", style = TextStyle(color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold))
+                                }
+                                Spacer(Modifier.width(10.dp))
+                                Text(step, style = AeroText.body(15), modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                    GuideSection(stringResource(R.string.move_guide_feel)) {
+                        Text(stringResource(MoveText.feel(move)), style = AeroText.body(15))
+                    }
+                    GuideSection(stringResource(R.string.move_guide_avoid), tint = p.fail) {
+                        Text(stringResource(MoveText.avoid(move)), style = AeroText.body(15))
+                    }
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun GuideSection(title: String, tint: Color? = null, content: @Composable () -> Unit) {
+    Spacer(Modifier.height(16.dp))
+    Text(title, style = AeroText.title(16).copy(color = tint ?: LocalAero.current.accentDeep.let { if (LocalAero.current.isDark) LocalAero.current.accent else it }))
+    Spacer(Modifier.height(6.dp))
+    content()
 }
 
 @Composable
@@ -713,13 +790,20 @@ private fun MoveStep(move: MovePlan.Move, isFirst: Boolean, onBack: () -> Unit, 
     val timed = move.holdSeconds > 0
     val complete = !timed || done >= move.holds
     Column(Modifier.fillMaxSize()) {
-        GlassPanel(Modifier.fillMaxWidth(), corner = 30.dp, padding = PaddingValues(20.dp)) {
-            Text(stringResource(MoveText.name(move)), style = AeroText.title(26).copy(shadow = titleShadow(LocalAero.current)))
-            Spacer(Modifier.height(6.dp))
-            Pill(stringResource(MoveText.dose(move)), color = LocalAero.current.accent)
-            Spacer(Modifier.height(12.dp))
-            Text(stringResource(MoveText.how(move)), style = AeroText.body(16))
+        var guide by rememberSaveable(move.id) { mutableStateOf(false) }
+        GlassPanel(Modifier.fillMaxWidth(), corner = 30.dp, padding = PaddingValues(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(MoveText.name(move)), style = AeroText.title(24).copy(shadow = titleShadow(LocalAero.current)))
+                    Spacer(Modifier.height(6.dp))
+                    Pill(stringResource(MoveText.dose(move)), color = LocalAero.current.accent)
+                }
+                GelButton(stringResource(R.string.move_guide_open), { guide = true }, tone = GelTone.NEUTRAL, compact = true)
+            }
+            MoveFigure(move, Modifier.fillMaxWidth().height(if (timed) 96.dp else 150.dp))
+            Text(stringResource(MoveText.how(move)), style = AeroText.body(15))
         }
+        if (guide) MoveGuide(move) { guide = false }
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
             if (timed) HoldTimer(move, done) { done++ }
         }
