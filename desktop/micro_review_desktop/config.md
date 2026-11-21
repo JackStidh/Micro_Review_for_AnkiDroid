@@ -16,3 +16,6 @@ Micro Review Desktop: a few cards every so often while you use your PC. Easier t
 - `sync_after_cards`: sync with AnkiWeb before the cards (the phone's latest answers) and after them, if you're logged in, in the background, then tell the phone to sync too.
 - `morning_hour`: when "Snooze › Until tomorrow" ends.
 - `stand_up_minutes`: after this many minutes of sitting at the PC, a stand-up break with a desk exercise (0: off). A few minutes without input counts as a break; so does stepping away while it shows.
+- `spell_minutes`: after this many minutes with a distraction in front (short exits included), a prompt in the middle of the screen: "Close it" sends the window to the taskbar, "5 more minutes" must be held (longer each time), "On purpose" leaves that stretch alone (0: off). During a game, a tray notification instead.
+- `distractions`: words that make a window a distraction when its title (a browser tab's) or its program's name contains them, case ignored.
+

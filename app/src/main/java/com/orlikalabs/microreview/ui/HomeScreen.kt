@@ -152,6 +152,8 @@ fun HomeScreen(
     actions: HomeActions,
     themeChoice: ThemeChoice = ThemeChoice(),
     move: MoveSummary = MoveSummary(),
+    today: TodaySummary? = null,
+    todayActions: TodayActions? = null,
 ) {
     val insets = WindowInsets.safeDrawing.asPaddingValues()
     AeroBackground(Modifier.fillMaxSize()) {
@@ -181,8 +183,11 @@ fun HomeScreen(
                     Problem(R.string.error_load_failed_title, R.string.error_load_failed, R.string.retry, actions.onRetry)
                 }
                 ScreenState.Ready -> {
+                    if (today != null && todayActions != null) {
+                        item(key = "today") { TodayBoard(today, todayActions) }
+                    }
                     item(key = "hero") { Hero(status, dueTotal(selectedDecks), snoozeMinutes, actions) }
-                    item(key = "move") { MoveEntry(move, actions.onOpenMove) }
+                    if (today == null) item(key = "move") { MoveEntry(move, actions.onOpenMove) }
                     if (needs.isNotEmpty()) item(key = "needs") { Needs(needs, actions.onFix) }
                     item(key = "next") { NextUp(currentCard) }
                     item(key = "order-title") {

@@ -33,6 +33,9 @@ import com.orlikalabs.microreview.ui.CurrentCard
 import com.orlikalabs.microreview.ui.DeckItem
 import com.orlikalabs.microreview.ui.HomeActions
 import com.orlikalabs.microreview.ui.HomeScreen
+import com.orlikalabs.microreview.ui.Celebration
+import com.orlikalabs.microreview.ui.TodayActions
+import com.orlikalabs.microreview.ui.TodaySummary
 import com.orlikalabs.microreview.ui.MoveState
 import com.orlikalabs.microreview.ui.MoveSummary
 import com.orlikalabs.microreview.ui.HomeStatus
@@ -68,6 +71,43 @@ class MainActivity : ComponentActivity() {
     private var palette by mutableStateOf(AeroThemes.SAKURA)
     private var themeChoice by mutableStateOf(ThemeChoice())
     private var move by mutableStateOf(MoveSummary())
+    private var today by mutableStateOf(TodaySummary())
+    private val celebrations = mutableStateListOf<String>()
+
+    private val todayActions = object : TodayActions {
+        override fun openLife(tab: Int) = startActivity(LifeActivity.intent(this@MainActivity, tab))
+
+        override fun tapHabit(habit: Habits.Habit, delta: Int) {
+            LifeStore.tap(this@MainActivity, habit, delta)
+            readToday()
+        }
+
+        override fun completeTask(id: Long) {
+            LifeStore.completeTask(this@MainActivity, id)
+            readToday()
+        }
+
+        override fun openMove() = startActivity(MoveActivity.intent(this@MainActivity))
+    }
+
+    /** The Today board, and anything to celebrate. */
+    private fun readToday() {
+        val habits = LifeStore.habits(this)
+        val day = LifeStore.habitToday(this)
+        val open = Tasks.open(LifeStore.tasks(this))
+        val now = System.currentTimeMillis()
+        move = MoveSummary(MoveStore.phase(this) != null, MoveState(days = MoveStore.days(this)).doneToday)
+        today = TodaySummary(
+            xp = LifeStore.xp(this),
+            xpToday = LifeStore.ledger(this).total(java.time.LocalDate.now()),
+            habits = habits.map { it to (day?.count(it.id) ?: 0) },
+            habitNames = habits.associate { it.id to LifeText.habitName(this, it) },
+            nextTask = open.firstOrNull { (it.snoozedUntil ?: 0L) <= now } ?: open.firstOrNull(),
+            tasksLeft = open.size,
+            move = move,
+        )
+        celebrations += LifeStore.takeCelebrations(this)
+    }
 
     /** Off for a theme shuffled as the app comes back into view: it's simply there, no crossfade. */
     private var themeAnimated by mutableStateOf(true)
@@ -134,7 +174,10 @@ class MainActivity : ComponentActivity() {
                         actions = actions,
                         themeChoice = themeChoice,
                         move = move,
+                        today = today,
+                        todayActions = todayActions,
                     )
+                    celebrations.firstOrNull()?.let { what -> Celebration(what) { celebrations.removeAt(0) } }
                 }
             }
         }
@@ -153,7 +196,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         // Back from the settings or the system's: the theme, the decks or a permission may have changed.
         showTheme(AeroThemes.current(this))
-        move = MoveSummary(MoveStore.phase(this) != null, MoveState(days = MoveStore.days(this)).doneToday)
+        readToday()
         refresh()
     }
 

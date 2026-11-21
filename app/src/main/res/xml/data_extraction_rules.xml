@@ -8,10 +8,12 @@
         <include domain="sharedpref" path="com.ankidroid.companion.deck_selection.xml" />
         <include domain="sharedpref" path="com.orlikalabs.microreview.focus.xml" />
         <include domain="sharedpref" path="com.orlikalabs.microreview.move.xml" />
+        <include domain="sharedpref" path="com.orlikalabs.microreview.life.xml" />
     </cloud-backup>
     <device-transfer>
         <include domain="sharedpref" path="com.ankidroid.companion.deck_selection.xml" />
         <include domain="sharedpref" path="com.orlikalabs.microreview.focus.xml" />
         <include domain="sharedpref" path="com.orlikalabs.microreview.move.xml" />
+        <include domain="sharedpref" path="com.orlikalabs.microreview.life.xml" />
     </device-transfer>
 </data-extraction-rules>

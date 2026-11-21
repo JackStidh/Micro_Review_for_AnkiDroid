@@ -151,6 +151,31 @@ def _foreground() -> Tuple[bool, Optional[str]]:
     return full, name
 
 
+def foreground_window() -> Tuple[Optional[int], Optional[str], Optional[str]]:
+    """The window in front: its handle, process name and title (Nones elsewhere than Windows)."""
+    if not IS_WINDOWS:
+        return None, None, None
+    try:
+        hwnd = _user32.GetForegroundWindow()
+        if not hwnd:
+            return None, None, None
+        length = _user32.GetWindowTextLengthW(hwnd)
+        buffer = ctypes.create_unicode_buffer(length + 1)
+        _user32.GetWindowTextW(hwnd, buffer, length + 1)
+        return int(hwnd), _process_name(hwnd), buffer.value
+    except Exception:
+        return None, None, None
+
+
+def minimize(hwnd: Optional[int]) -> None:
+    """Sends a window to the taskbar (the spell breaker's "Close it")."""
+    if IS_WINDOWS and hwnd:
+        try:
+            _user32.ShowWindow(hwnd, 6)  # SW_MINIMIZE
+        except Exception:
+            pass
+
+
 def _exclusive_fullscreen() -> bool:
     state = ctypes.c_int(0)
     try:

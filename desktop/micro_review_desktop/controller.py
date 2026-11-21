@@ -48,6 +48,8 @@ DEFAULTS = {
     "sync_after_cards": True,
     "morning_hour": 7,
     "stand_up_minutes": 25,
+    "spell_minutes": 30,
+    "distractions": ["YouTube", "Reddit", "TikTok", "Instagram", "Twitter", "/ X", "Facebook", "Twitch", "9GAG", "Netflix"],
 }  # type: Dict[str, Any]
 
 
@@ -59,6 +61,9 @@ class Controller:
         self.sitting = rules.SittingClock()
         self.break_prompt = None
         self.break_shown_at = 0.0
+        self.distraction = rules.DistractionClock()
+        self.spell_prompt = None
+        self.spell_window = None
         self.break_later_until = 0.0
         self.phone = rules.PhonePause()
         self.prompt = None
@@ -198,7 +203,8 @@ class Controller:
         self._tell_phone(idle)
         self._update_tray()
         self._break_tick(now, elapsed, idle, cfg)
-        if self.prompt is not None or self.break_prompt is not None or self.mw.col is None or self.syncing:
+        self._spell_tick(now, idle, cfg)
+        if self.prompt is not None or self.break_prompt is not None or self.spell_prompt is not None or self.mw.col is None or self.syncing:
             return
         if time.time() < self.snoozed_until():
             return
@@ -295,6 +301,75 @@ class Controller:
             # Closed some other way (Alt+F4): later, like "5 min".
             self.break_prompt = None
             self.break_later_until = time.monotonic() + 5 * 60
+
+    # The spell breaker
+
+    def _spell_tick(self, now: float, idle: float, cfg: Dict[str, Any]) -> None:
+        """A stretch in distracting windows longer than `spell_minutes`: the spell prompt, when nothing else shows.
+        During a game, a tray notification instead."""
+        if self.spell_prompt is not None:
+            return
+        hwnd, process, title = windows.foreground_window()
+        what = rules.distraction(title, process, cfg.get("distractions") or [])
+        self.distraction.tick(now, what, idle)
+        minutes = int(cfg.get("spell_minutes", 0) or 0)
+        if not self.distraction.due(now, minutes, what is not None):
+            return
+        if self.prompt is not None or self.break_prompt is not None or time.time() < self.snoozed_until():
+            return
+        if cfg["gaming_shutoff"] and now - self.game_checked > GAME_CHECK_SECONDS:
+            self._check_game(now)
+            return
+        if cfg["gaming_shutoff"] and self.game:
+            if self.tray is not None:
+                self.tray.showMessage("Still what you meant to do?", "%d minutes on %s." % (
+                    self.distraction.minutes(now), what), QSystemTrayIcon.MessageIcon.Information, 8000)
+            self.distraction.more(now)
+            return
+        from .breaks import SpellPrompt
+
+        self.spell_window = hwnd
+        prompt = SpellPrompt(self, what or "", self.distraction.minutes(now), rules.spell_hold_seconds(self.distraction.strikes))
+        self.spell_prompt = prompt
+        try:
+            prompt.start()
+        except Exception as error:
+            store.log("can't show the spell breaker: %r" % error)
+            self.spell_prompt = None
+            prompt.deleteLater()
+            self.distraction.more(now)
+            return
+        store.log("spell breaker: %s, %d min" % (what, self.distraction.minutes(now)))
+
+    def spell_close(self) -> None:
+        windows.minimize(self.spell_window)
+        self.distraction.reset()
+        self.state["spells_broken"] = int(self.state.get("spells_broken", 0)) + 1
+        self._save_state()
+        store.log("spell broken")
+        self._close_spell()
+
+    def spell_more(self) -> None:
+        self.distraction.more(time.monotonic())
+        store.log("spell: 5 more minutes (%d)" % self.distraction.strikes)
+        self._close_spell()
+
+    def spell_on_purpose(self) -> None:
+        self.distraction.exempt = True
+        store.log("spell: on purpose")
+        self._close_spell()
+
+    def _close_spell(self) -> None:
+        prompt = self.spell_prompt
+        self.spell_prompt = None
+        if prompt is not None:
+            prompt.close()
+
+    def spell_closed(self, prompt) -> None:
+        if self.spell_prompt is prompt:
+            # Closed some other way: as "5 more minutes".
+            self.spell_prompt = None
+            self.distraction.more(time.monotonic())
 
     def _studying_in_anki(self) -> bool:
         return self.mw.state == "review" and self.mw.isVisible() and self.mw.isActiveWindow()

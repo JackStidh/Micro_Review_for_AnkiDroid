@@ -24,6 +24,7 @@ checked on a real build and a real phone.
 | **Settings screen** with a checklist of what still has to be allowed. Gear orb on the home screen. | `FocusSettingsActivity`, `ui/SettingsScreen.kt` |
 | **Aero look**: four themes (see below), shuffled each time the app or a card opens, among the ticked ones; the padlock keeps the one showing. | `ui/aero/`, `ThemeShuffle` |
 | **Move**: exercise habits in small doses (see below): a morning check-in and press-ups, an evening routine with a guided hold timer, the walk, and stand-up breaks from the PC add-on. Off until a program is picked. | `Move*.kt`, `ui/MoveScreens.kt`, `desktop/.../breaks.py` |
+| **Life**: the day's habits (water by the cup, supplements at their times, any habit with a daily count), tasks, XP and ranks (10級 to 十段) and seals, the guard (scroll spell, long sessions, inactivity from the step counter, bedtime), with a Today board on the home screen. Its prompts are off until turned on. | `Habits`, `Tasks`, `Progress`, `Guard`, `Life*.kt`, `GuardStore`, `ui/LifeScreens.kt`, `ui/LifePromptScreens.kt`, `ui/TodayBoard.kt` |
 
 ## How it fits the existing app
 
@@ -138,3 +139,37 @@ Things to watch, with the fallback if they fail:
 - Images and sound on cards (an upstream limit: cards are plain text, cards with sound are skipped).
 - Gate statistics (how often each app was opened, cards paid).
 - Translating the new texts; the device tests for the new flows.
+
+## Life
+
+The lifestyle side, built like the cards: an outside nudge at the moment the phone is in use.
+
+- **Habits** (`Habits`): water by the cup (target 8, reminded when behind an even pace from 8:00 to 21:00, at most
+  every 90 min), timed doses (one tap each, reminded once when late, up to 4 h), anything else with a daily count;
+  streaks; ideas to start from (vitamins, creatine, a protein shake, meals, daylight, reading...). Built-in ones are
+  named in `strings.xml` (`habit_<id>`, `LifeText`) until renamed. Tap the orb to log, long-press to take one back.
+- **Tasks** (`Tasks`): an optional due time from presets (in an hour, this evening, tomorrow...), a star; reminded
+  when due (every 2 h until done), undated ones nudged after waiting 4 h, between 10:00 and 21:00; "Tomorrow" from a
+  nudge snoozes to 9:00.
+- **Progress** (`Progress`): XP per event with daily caps (a card 2, a cup 2, a task 10, the evening session 25...),
+  ranks from 10級 up to 十段 (初段 at 2,200), 16 seals (`Progress.ACHIEVEMENTS`, texts `ach_<id>`); a rank up or a
+  new seal is celebrated in the app (`LifeStore.takeCelebrations`, `Celebration`).
+- **Guard** (`Guard`, `GuardStore`): the scroll spell (a stretch in the watched apps, by default the gated ones,
+  short exits of up to 90 s included, longer than 20 min: a prompt; "5 more minutes" must be held 0, 3, 8 then 15 s;
+  "On purpose" leaves the stretch alone; "Close it" goes to the home screen); a long session (60 min on the phone in
+  any app, the screen off for 2 min ends one); inactivity (the step counter, `ACTIVITY_RECOGNITION`, read at each
+  screen-on and every 15 min in use: under 150 steps in two hours between 9:00 and 21:00); bedtime (off until set;
+  after it, a wind-down prompt; "Going to bed" within 30 min earns points); last night's sleep from the last use to
+  the first (3 to 14 h).
+- **Prompts** (`LifePrompts`): one at a time, in the card's window: the spell and the long session, then bedtime
+  (held back only by a snooze, a call, a Bluetooth pause), Move's morning check-in, the soft nudges bundled in one
+  card (due doses, water, tasks, inactivity; at most every 20 min, "Later" 30 min; also held back by Do Not
+  Disturb), Move's evening routine. Off until "Nudge me" is turned on in Life (`LifeSettings`), so a new user gets
+  none unasked; Move's own prompts keep their own switch.
+- **Storage**: `life` backed up (habits and their days, tasks, XP, counters, seals, the guard's choices: what the user
+  made and earned), `life_state` not (reminders, step readings, the bedtime answer, celebrations to show).
+- **PC**: the add-on's spell breaker (`spell_minutes`, `distractions`), see `desktop/README.md`.
+
+Not verified on a device: the step counter's first reading on registration (some phones only report on change), the
+spell breaker's feel at 1-second tracking, the hold friction on a real touch screen.
+

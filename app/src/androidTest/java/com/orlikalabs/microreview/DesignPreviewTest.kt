@@ -63,6 +63,23 @@ class DesignPreviewTest {
         } + MovePlan.Day(today, pain = MovePlan.PainSpot.BUTTOCK, walkMinutes = 10)
         context.getSharedPreferences("com.orlikalabs.microreview.move_log", Context.MODE_PRIVATE).edit()
             .putString("log", MovePlan.encode(days)).commit()
+        // Life: three habits partly done, tasks, a rank, a few seals. Its prompts are shown by the test.
+        LifeSettings.setPromptsOn(context, false)
+        GuardStore.setBedtime(context, 23 * 60 + 30)
+        val vitamin = Habits.SUGGESTIONS.first { it.id == "vitamin_d" }
+        val creatine = Habits.SUGGESTIONS.first { it.id == "creatine" }
+        LifeStore.setHabits(context, listOf(Habits.WATER, vitamin, creatine))
+        repeat(3) { LifeStore.tap(context, Habits.WATER) }
+        LifeStore.tap(context, vitamin)
+        val now = System.currentTimeMillis()
+        LifeStore.addTask(context, "Call the bank about the card", now - 3_600_000L, starred = true)
+        LifeStore.addTask(context, "Book the physio", null)
+        LifeStore.addTask(context, "Buy rice and eggs", now + 86_400_000L)
+        context.getSharedPreferences("com.orlikalabs.microreview.life", Context.MODE_PRIVATE).edit()
+            .putInt("xp", 2_350)
+            .putStringSet("unlocked", setOf("first_step", "cards_100", "water_week", "tasks_10", "ikkyu", "shodan"))
+            .commit()
+        LifeStore.takeCelebrations(context)
         shell("mkdir -p $SHOTS")
         shell("appops set ${context.packageName} SYSTEM_ALERT_WINDOW allow")
     }
@@ -129,6 +146,39 @@ class DesignPreviewTest {
             CardOverlay.requestMove(context, MoveStore.Prompt.EVENING)
             SystemClock.sleep(1_500)
             shot("${palette.id}-14-evening")
+            CardOverlay.onScreenOff(context)
+            SystemClock.sleep(800)
+            for (tab in 0..3) {
+                ActivityScenario.launch<LifeActivity>(LifeActivity.intent(context, tab)).use {
+                    SystemClock.sleep(1_800)
+                    shot("${palette.id}-15-life-$tab")
+                    if (tab == 0) {
+                        swipeUp()
+                        SystemClock.sleep(1_000)
+                        shot("${palette.id}-15-life-0b")
+                    }
+                }
+            }
+            CardOverlay.requestLife(context, LifePrompt.Spell("com.android.settings", 24, 1, session = false))
+            SystemClock.sleep(1_800)
+            shot("${palette.id}-16-spell")
+            CardOverlay.onScreenOff(context)
+            SystemClock.sleep(800)
+            CardOverlay.requestLife(
+                context,
+                LifePrompt.Nudge(
+                    listOf(Habits.Reminder(creatine, 9 * 60), Habits.Reminder(Habits.WATER, null)),
+                    LifeStore.tasks(context).take(1),
+                    inactive = true,
+                ),
+            )
+            SystemClock.sleep(1_800)
+            shot("${palette.id}-17-nudge")
+            CardOverlay.onScreenOff(context)
+            SystemClock.sleep(800)
+            CardOverlay.requestLife(context, LifePrompt.Bedtime(1))
+            SystemClock.sleep(1_800)
+            shot("${palette.id}-18-bedtime")
             CardOverlay.onScreenOff(context)
             SystemClock.sleep(800)
         }

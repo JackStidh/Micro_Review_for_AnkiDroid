@@ -63,6 +63,7 @@ object CardReview {
                 anki.reviewCard(localState.noteID, localState.cardOrd, ease, timeTaken)
                 // On the phone only until AnkiDroid syncs: asked for at the next chance (AnkiSync).
                 AnkiSync.onChanged(context)
+                LifeStore.award(context, Progress.Event.CARD, Progress.Counter.CARDS)
             }
 
             // Answered from a nudge's notification: the next card waits for its own nudge, and "Keep going" is

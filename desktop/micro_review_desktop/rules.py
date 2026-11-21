@@ -85,6 +85,68 @@ def stepped_away(idle_seconds: float, shown_seconds: float) -> bool:
     return (idle_seconds >= STOOD_UP_SECONDS and idle_seconds <= shown_seconds) or idle_seconds >= AWAY_SECONDS
 
 
+# The spell breaker on the PC: a stretch in distracting windows (a site in a browser tab's title, an app).
+DISTRACTION_GRACE_SECONDS = 90
+SPELL_MORE_SECONDS = 5 * 60
+_SPELL_HOLD = (0, 3, 8, 15)
+
+
+def spell_hold_seconds(strikes: int) -> int:
+    """How long "5 more minutes" must be held: longer each time it's chosen in the same stretch."""
+    return _SPELL_HOLD[max(0, min(strikes, len(_SPELL_HOLD) - 1))]
+
+
+def distraction(title: Optional[str], process: Optional[str], words: Iterable[str]) -> Optional[str]:
+    """The distraction in front, if any: the first of `words` in the window's title or its process name, as
+    configured (case ignored)."""
+    text = ((title or "") + " " + (process or "")).lower()
+    for word in words:
+        if word and word.strip().lower() in text:
+            return word.strip()
+    return None
+
+
+@dataclass
+class DistractionClock:
+    """A stretch in distracting windows: started at `started`, last seen at `last_seen` (monotonic seconds); short
+    exits (DISTRACTION_GRACE_SECONDS) don't end it. `next_at` the next prompt (0: the threshold after the start),
+    `strikes` "5 more" chosen, `exempt` "on purpose"."""
+
+    started: float = 0.0
+    last_seen: float = 0.0
+    what: Optional[str] = None
+    next_at: float = 0.0
+    strikes: int = 0
+    exempt: bool = False
+
+    def active(self, now: float) -> bool:
+        return self.started > 0 and now - self.last_seen < DISTRACTION_GRACE_SECONDS
+
+    def tick(self, now: float, what: Optional[str], idle_seconds: float) -> None:
+        if what is not None and idle_seconds < AWAY_SECONDS:
+            if not self.active(now):
+                self.started, self.next_at, self.strikes, self.exempt = now, 0.0, 0, False
+            self.last_seen, self.what = now, what
+        elif not self.active(now):
+            self.started = 0.0
+
+    def due(self, now: float, minutes: int, in_front: bool) -> bool:
+        if minutes <= 0 or not in_front or not self.active(now) or self.exempt:
+            return False
+        at = self.next_at or self.started + minutes * 60
+        return now >= at
+
+    def minutes(self, now: float) -> int:
+        return int((now - self.started) // 60)
+
+    def more(self, now: float) -> None:
+        self.next_at = now + SPELL_MORE_SECONDS
+        self.strikes += 1
+
+    def reset(self) -> None:
+        self.started = 0.0
+
+
 @dataclass
 class SittingClock:
     """How long the user has been sitting at the PC: since the last break. Unlike ActiveClock, time without input

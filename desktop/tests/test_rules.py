@@ -233,3 +233,38 @@ def test_stepped_away_only_after_input_while_shown():
     # Long enough to be away regardless.
     assert rules.stepped_away(idle_seconds=rules.AWAY_SECONDS, shown_seconds=10)
 
+
+def test_distraction_in_the_title():
+    words = ["YouTube", "Reddit"]
+    assert rules.distraction("Funny cats - YouTube - Mozilla Firefox", "firefox.exe", words) == "YouTube"
+    assert rules.distraction("r/anki - reddit", None, words) == "Reddit"
+    assert rules.distraction("Anki - Japanese", "anki.exe", words) is None
+    assert rules.distraction(None, None, words) is None
+
+
+def test_distraction_stretch_with_short_exits():
+    b = 1000  # monotonic seconds never start at 0
+    clock = rules.DistractionClock()
+    for t in range(0, 600, 5):
+        clock.tick(b + t, "YouTube", idle_seconds=1)
+    clock.tick(b + 605, None, idle_seconds=1)  # a quick look elsewhere
+    clock.tick(b + 650, "YouTube", idle_seconds=1)
+    assert clock.started == b and clock.minutes(b + 650) == 10
+    assert not clock.due(b + 650, 20, in_front=True)
+    for t in range(655, 1205, 5):
+        clock.tick(b + t, "YouTube", idle_seconds=1)
+    assert clock.due(b + 1205, 20, in_front=True)
+    assert not clock.due(b + 1205, 20, in_front=False)
+    assert not clock.due(b + 1205, 0, in_front=True)
+    clock.more(b + 1205)
+    assert not clock.due(b + 1210, 20, in_front=True) and clock.strikes == 1
+    # Away from the window long enough: over.
+    clock.tick(b + 1400, None, idle_seconds=1)
+    assert not clock.active(b + 1400)
+
+
+def test_spell_hold_grows():
+    assert rules.spell_hold_seconds(0) == 0
+    assert rules.spell_hold_seconds(1) < rules.spell_hold_seconds(2) < rules.spell_hold_seconds(3)
+    assert rules.spell_hold_seconds(10) == rules.spell_hold_seconds(3)
+

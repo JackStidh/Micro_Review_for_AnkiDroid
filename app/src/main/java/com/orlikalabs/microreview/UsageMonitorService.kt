@@ -62,6 +62,9 @@ class UsageMonitorService : Service() {
 
     /** Unlocked since the screen came on: the phone was used, not just glanced at. */
     private var usedSinceScreenOn = false
+
+    /** When the step counter was last read (elapsed wall time, ms). */
+    private var lastStepRead = 0L
     private var loggedNoOverlay: String? = null
     private var lastSyncCheck = 0L
 
@@ -137,8 +140,9 @@ class UsageMonitorService : Service() {
     /** The screen is on: watch until it goes off. */
     private fun startPolling() {
         if (polling || !powerManager().isInteractive) return
-        // After a night: Move's morning prompt is armed for the first unlock.
+        // After a night: Move's morning prompt is armed for the first unlock, last night's sleep measured.
         MoveStore.onScreenOn(this)
+        GuardStore.onScreenOn(this)
         usedSinceScreenOn = false
         polling = true
         MonitorStatus.polling = true
@@ -157,6 +161,7 @@ class UsageMonitorService : Service() {
         polling = false
         // When the phone was last used: a glance at the lock screen doesn't count.
         if (usedSinceScreenOn) MoveStore.onScreenOff(this)
+        GuardStore.onScreenOff(this, usedSinceScreenOn)
         MonitorStatus.polling = false
         handler.removeCallbacks(pollTask)
         NudgeSession.withdraw(this)
@@ -207,7 +212,7 @@ class UsageMonitorService : Service() {
             gate(current)
         }
         NudgeSession.reconcile(this)
-        val moved = moveStep()
+        val moved = lifeStep(System.currentTimeMillis())
         if (FocusSettings.nudgesEnabled(this)) {
             if (!moved) nudgeStep(elapsed)
         } else {
@@ -231,23 +236,25 @@ class UsageMonitorService : Service() {
     }
 
     /**
-     * Move's morning or evening prompt ([MoveStore.duePrompt]), in the card's window, when nothing else is shown and
-     * the user isn't reviewing. Held back like a card by a snooze, a call, Do Not Disturb and a Bluetooth pause, but not
-     * by quiet hours or the PC. Returns whether one is shown.
+     * The lifestyle prompts ([LifePrompts]: the spell breaker, bedtime, Move's, the soft nudges), in the card's window,
+     * when nothing else is shown and the user isn't in this app or AnkiDroid. The stretch in the watched apps is
+     * tracked every second ([GuardStore.track]); the step counter read every quarter hour. Returns whether one is
+     * shown.
      */
-    private fun moveStep(): Boolean {
-        if (CardOverlay.isShowing || FocusReviewActivity.isShown || MoveActivity.isShown || NudgeSession.isBusy(this)) return false
+    private fun lifeStep(now: Long): Boolean {
         val app = known
-        if (app == packageName || app == ANKIDROID_PACKAGE) return false
-        val prompt = MoveStore.duePrompt(this) ?: return false
-        when (FocusState.pauseReason(this)) {
-            null, Interruptions.Reason.QUIET_HOURS, Interruptions.Reason.PC_IN_USE -> Unit
-            else -> return false
+        GuardStore.track(this, app, now)
+        if (now - lastStepRead >= STEP_READ_MS) {
+            lastStepRead = now
+            GuardStore.readSteps(this)
         }
+        if (CardOverlay.isShowing || FocusReviewActivity.isShown || MoveActivity.isShown || LifeActivity.isShown || NudgeSession.isBusy(this)) return false
+        if (app == null || app == packageName || app == ANKIDROID_PACKAGE) return false
+        val prompt = LifePrompts.next(this, app, FocusState.pauseReason(this), now) ?: return false
         if (!FocusState.canOpenOverApps(this)) return false
-        MoveStore.prompted(this, prompt)
-        FocusLog.i(this, "move prompt: ${prompt.name.lowercase()}")
-        CardOverlay.requestMove(this, prompt)
+        LifePrompts.shown(this, prompt, now)
+        FocusLog.i(this, "life prompt: ${prompt.javaClass.simpleName}")
+        CardOverlay.requestLife(this, prompt)
         return true
     }
 
@@ -370,6 +377,9 @@ class UsageMonitorService : Service() {
 
     companion object {
         private const val TAG = "Focus"
+
+        /** How often the step counter is read while the phone is in use. */
+        private const val STEP_READ_MS = 15 * 60_000L
         const val NOTIFICATION_ID = 3
         const val CHANNEL_ID = "focus_monitor"
         private const val ANKIDROID_PACKAGE = "com.ichi2.anki"

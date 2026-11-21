@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!-- AnkiDroid's API (AnkiDroidContract): reading the decks and cards, recording the answers. -->
+    <!-- Move and Life: the step counter, for inactivity and the steps of the day. -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="com.ichi2.anki.permission.READ_WRITE_DATABASE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -52,6 +54,12 @@
             </intent-filter>
         </activity>
         <!-- The app gate, a full-screen nudge or a "Keep going" session: opened over the app in front. -->
+        <activity
+            android:name=".LifeActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.AnkiNotifications" />
         <activity
             android:name=".MoveActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"

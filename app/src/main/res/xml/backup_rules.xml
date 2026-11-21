@@ -11,4 +11,5 @@
     <include domain="sharedpref" path="com.ankidroid.companion.deck_selection.xml" />
     <include domain="sharedpref" path="com.orlikalabs.microreview.focus.xml" />
     <include domain="sharedpref" path="com.orlikalabs.microreview.move.xml" />
+    <include domain="sharedpref" path="com.orlikalabs.microreview.life.xml" />
 </full-backup-content>

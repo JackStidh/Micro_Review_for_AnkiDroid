@@ -22,6 +22,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import com.orlikalabs.microreview.ui.CardScreen
+import com.orlikalabs.microreview.ui.NudgeActions
+import com.orlikalabs.microreview.ui.NudgeScreen
+import com.orlikalabs.microreview.ui.BedtimeActions
+import com.orlikalabs.microreview.ui.BedtimeScreen
+import com.orlikalabs.microreview.ui.SpellActions
+import com.orlikalabs.microreview.ui.SpellScreen
 import com.orlikalabs.microreview.ui.MovePromptScreen
 import com.orlikalabs.microreview.ui.MovePromptData
 import com.orlikalabs.microreview.ui.MovePromptActions
@@ -57,6 +63,10 @@ object CardOverlay {
     /** Move's prompt shown instead of a card ([requestMove]). */
     @Volatile
     private var shownMove: MoveStore.Prompt? = null
+
+    /** A lifestyle prompt shown instead of a card ([requestLife]). */
+    @Volatile
+    private var shownLife: LifePrompt? = null
 
     private var window: View? = null
     private var controller: FocusCardController? = null
@@ -99,8 +109,8 @@ object CardOverlay {
             return
         }
         if (isShowing) {
-            // Move's prompt stays unless the gate needs the screen.
-            if (shownMove != null && mode != FocusCardController.Mode.GATE) return
+            // Move's or a lifestyle prompt stays unless the gate needs the screen.
+            if ((shownMove != null || shownLife != null) && mode != FocusCardController.Mode.GATE) return
             if (mode == shownMode && app == shownApp) return
             // A gate isn't replaced by a nudge: it asks for cards already.
             if (shownMode == FocusCardController.Mode.GATE && mode != FocusCardController.Mode.GATE) return
@@ -167,6 +177,7 @@ object CardOverlay {
         shownMode = null
         shownApp = null
         shownMove = null
+        shownLife = null
         val syncing = closedByUser && AnkiSync.isDueAfterCards(context) && AnkiSync.request(context, "after cards")
         if (syncing) {
             // AnkiDroid shows its deck list for a moment: this window stays over it, under the veil, then fades out.
@@ -243,11 +254,15 @@ object CardOverlay {
             warning = MoveStore.warning(context),
         )
         val actions = object : MovePromptActions {
-            override fun pain(spot: MovePlan.PainSpot) = MoveStore.updateToday(context) { it.copy(pain = spot) }
+            override fun pain(spot: MovePlan.PainSpot) {
+                if (MoveStore.today(context)?.pain == null) LifeStore.award(context, Progress.Event.CHECK_IN)
+                MoveStore.updateToday(context) { it.copy(pain = spot) }
+            }
 
             override fun trend(trend: MovePlan.Trend) = MoveStore.updateToday(context) { it.copy(trend = trend) }
 
             override fun pressUpsDone() {
+                if (MoveStore.today(context)?.morning != true) LifeStore.award(context, Progress.Event.MORNING)
                 MoveStore.updateToday(context) { it.copy(morning = true) }
                 dismiss(context, closedByUser = false)
             }
@@ -291,6 +306,137 @@ object CardOverlay {
         shownApp = null
         shownMove = prompt
         FocusLog.i(context, "move prompt shown: ${prompt.name.lowercase()}")
+    }
+
+    /** Shows a lifestyle prompt ([LifePrompt]) in the card's window, from any thread. */
+    fun requestLife(context: Context, prompt: LifePrompt) {
+        if (prompt is LifePrompt.Move) return requestMove(context, prompt.prompt)
+        val appContext = context.applicationContext
+        main.post { showLife(appContext, prompt) }
+    }
+
+    private fun showLife(context: Context, prompt: LifePrompt) {
+        if (!FocusState.canOpenOverApps(context) || isShowing) return
+        val themed = ContextThemeWrapper(context, R.style.Theme_AnkiNotifications)
+        fun close() = dismiss(context, closedByUser = false)
+        fun goHome() {
+            try {
+                // Allowed while this window is visible: out of the app that held the attention.
+                context.startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (e: Exception) {
+                FocusLog.i(context, "couldn't go home: $e")
+            }
+        }
+        val frame = OverlayFrame(themed) {
+            // Back pressed: as "later" for the soft ones; the spell and bedtime ask for an answer.
+            if (prompt is LifePrompt.Nudge) {
+                GuardStore.softLater(context)
+                close()
+            }
+        }
+        val palette = AeroThemes.shuffle(context)
+        val content: @androidx.compose.runtime.Composable () -> Unit = when (prompt) {
+            is LifePrompt.Spell -> {
+                val label = prompt.app?.let { FocusCardController.appLabel(context, it) }
+                val desk = MovePlan.deskMove((System.currentTimeMillis() / 60_000L).toInt())
+                val actions = object : SpellActions {
+                    override fun close() {
+                        if (prompt.session) GuardStore.sessionBreak(context) else GuardStore.broken(context)
+                        goHome()
+                        close()
+                    }
+
+                    override fun more() {
+                        if (prompt.session) GuardStore.sessionLater(context) else GuardStore.more()
+                        close()
+                    }
+
+                    override fun onPurpose() {
+                        GuardStore.exempt()
+                        close()
+                    }
+
+                    override fun water() {
+                        LifeStore.tap(context, LifeStore.habits(context).firstOrNull { it.id == Habits.WATER.id } ?: Habits.WATER)
+                        close()
+                    }
+                }
+                ({ SpellScreen(prompt, label, desk, Guard.holdMs(prompt.strikes), actions) })
+            }
+            is LifePrompt.Bedtime -> {
+                val bedtime = GuardStore.bedtime(context)
+                val actions = object : BedtimeActions {
+                    override fun goingToBed() {
+                        GuardStore.goingToBed(context)
+                        goHome()
+                        close()
+                    }
+
+                    override fun later() {
+                        GuardStore.bedtimeLater(context)
+                        close()
+                    }
+
+                    override fun notTonight() {
+                        GuardStore.goingToBed(context, award = false)
+                        close()
+                    }
+                }
+                ({ BedtimeScreen(prompt, "%d:%02d".format(bedtime / 60, bedtime % 60), Guard.holdMs(prompt.strikes), actions) })
+            }
+            is LifePrompt.Nudge -> {
+                val actions = object : NudgeActions {
+                    override fun habit(reminder: Habits.Reminder) = LifeStore.tap(context, reminder.habit)
+
+                    override fun taskDone(task: Tasks.Task) = LifeStore.completeTask(context, task.id)
+
+                    override fun taskTomorrow(task: Tasks.Task) {
+                        val tomorrow = java.time.LocalDate.now().plusDays(1).atTime(9, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                        LifeStore.updateTask(context, task.id) { it.copy(snoozedUntil = tomorrow) }
+                    }
+
+                    override fun walked() {
+                        LifeStore.award(context, Progress.Event.STAND_UP, Progress.Counter.STAND_UPS)
+                    }
+
+                    override fun allGood() = close()
+
+                    override fun later() {
+                        GuardStore.softLater(context)
+                        close()
+                    }
+                }
+                ({
+                    NudgeScreen(
+                        prompt,
+                        habitName = { LifeText.habitName(context, it) },
+                        habitCount = { habit -> LifeStore.habitToday(context)?.count(habit.id) ?: 0 },
+                        stepsToday = GuardStore.stepsToday(context),
+                        actions = actions,
+                    )
+                })
+            }
+            is LifePrompt.Move -> return
+        }
+        frame.addView(
+            composeView(themed) { AeroTheme(palette) { content() } },
+            FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
+        )
+        attachOwner(frame)
+        try {
+            windowManager(context).addView(frame, windowParams("Micro Review life"))
+        } catch (e: Exception) {
+            FocusLog.i(context, "can't show the prompt: $e")
+            owners.remove(frame)?.destroy()
+            return
+        }
+        window = frame
+        isShowing = true
+        shownMode = null
+        shownApp = null
+        shownMove = null
+        shownLife = prompt
+        FocusLog.i(context, "life prompt shown: ${prompt.javaClass.simpleName}")
     }
 
     /** How long the overlay stays over AnkiDroid's moment in front after a sync request, then fades. */

@@ -90,6 +90,12 @@ class SettingsDialog(QDialog):
         self.stand_up.setToolTip("A small window in the corner with a desk exercise. Stepping away from the keyboard "
                                  "for a few minutes counts as a break; during a game, a notification instead.")
         form.addRow("Stand up after", self.stand_up)
+        self.spell = self._spin(0, 180, "spell_minutes", " min in a distraction")
+        self.spell.setSpecialValueText("Off")
+        self.spell.setToolTip("After this long with a distracting site or app in front (YouTube, Reddit... in the "
+                              "window's title; the list is in the add-on's config), a prompt in the middle of the "
+                              "screen. Choosing more time gets harder each time.")
+        form.addRow("Break the spell after", self.spell)
         self.decks = QListWidget()
         self.decks.setMinimumHeight(120)
         chosen = list(self.cfg["decks"])
@@ -199,6 +205,7 @@ class SettingsDialog(QDialog):
         cfg["skips_per_day"] = self.skips.value()
         cfg["input_within_seconds"] = self.idle.value()
         cfg["stand_up_minutes"] = self.stand_up.value()
+        cfg["spell_minutes"] = self.spell.value()
         cfg["decks"] = [self.decks.item(i).text() for i in range(self.decks.count())
                         if self.decks.item(i).checkState() == Qt.CheckState.Checked]
         cfg["pass_fail_only"] = self.pass_fail.isChecked()

@@ -1,4 +1,5 @@
-"""The stand-up break: a small window in the corner after a stretch of sitting, with one desk exercise."""
+"""The stand-up break (a small window in the corner after a stretch of sitting, with one desk exercise) and the
+spell breaker (in the middle, after a stretch in distracting windows)."""
 from __future__ import annotations
 
 import html
@@ -131,4 +132,124 @@ class BreakPrompt(QWidget):
 
     def closeEvent(self, event) -> None:
         self.controller.break_closed(self)
+        super().closeEvent(event)
+
+
+class HoldButton(QPushButton):
+    """Acts only when held for `seconds` (instant at 0): it fills while held, empties if let go. Friction for what
+    shouldn't be too easy."""
+
+    def __init__(self, text: str, seconds: int, on_held, color: str = "#f0a92a"):
+        super().__init__(text)
+        from aqt.qt import QTimer
+
+        self.seconds = max(0, seconds)
+        self.on_held = on_held
+        self.color = color
+        self.progress = 0.0
+        self.timer = QTimer(self)
+        self.timer.setInterval(50)
+        self.timer.timeout.connect(self._grow)
+        self.pressed.connect(self._start)
+        self.released.connect(self._stop)
+        self._paint()
+
+    def _start(self) -> None:
+        if self.seconds == 0:
+            self.on_held()
+            return
+        self.timer.start()
+
+    def _grow(self) -> None:
+        self.progress = min(1.0, self.progress + 0.05 / self.seconds)
+        self._paint()
+        if self.progress >= 1.0:
+            self.timer.stop()
+            self.on_held()
+
+    def _stop(self) -> None:
+        if self.progress < 1.0:
+            self.timer.stop()
+            self.progress = 0.0
+            self._paint()
+
+    def _paint(self) -> None:
+        stop = max(0.001, min(0.999, self.progress))
+        self.setStyleSheet(
+            "QPushButton { border-radius: 14px; padding: 9px 16px; font-weight: bold; color: white;"
+            " border: 1px solid rgba(255,255,255,160);"
+            " background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 %s, stop:%.3f %s, stop:%.3f #8aa1b1, stop:1 #8aa1b1); }"
+            % (self.color, stop, self.color, min(stop + 0.001, 1.0))
+            if self.seconds else
+            "QPushButton { border-radius: 14px; padding: 9px 16px; font-weight: bold; color: white;"
+            " border: 1px solid rgba(255,255,255,160); background: %s; }" % self.color
+        )
+
+
+class SpellPrompt(QWidget):
+    """Breaking the spell on the PC: in the middle of the screen, taking the keyboard on purpose. "Close it" sends the
+    distracting window to the taskbar; "5 more minutes" must be held, longer each time; "On purpose" leaves this
+    stretch alone."""
+
+    def __init__(self, controller, what: str, minutes: int, hold_seconds: int):
+        super().__init__(None)
+        self.controller = controller
+        self.setWindowTitle("Micro Review: still what you meant to do?")
+        self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        self.setStyleSheet(STYLE)
+        self.setFixedWidth(460)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(8, 8, 8, 8)
+        panel = QFrame()
+        panel.setObjectName("panel")
+        outer.addWidget(panel)
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(22, 20, 22, 20)
+        layout.setSpacing(10)
+
+        head = QHBoxLayout()
+        seal = QLabel("\u899a")
+        seal.setObjectName("seal")
+        seal.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        head.addWidget(seal)
+        title = QLabel("%d minutes on %s" % (minutes, html.escape(what)))
+        title.setObjectName("title")
+        title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        head.addWidget(title, 1)
+        layout.addLayout(head)
+        text = QLabel("Still what you meant to do? Take a breath, look away from the screen, and decide.")
+        text.setWordWrap(True)
+        layout.addWidget(text)
+
+        close = QPushButton("Close it")
+        close.setObjectName("done")
+        close.setCursor(Qt.CursorShape.PointingHandCursor)
+        close.clicked.connect(lambda: self.controller.spell_close())
+        layout.addWidget(close)
+        row = QHBoxLayout()
+        more = HoldButton("5 more minutes", hold_seconds, lambda: self.controller.spell_more())
+        purpose = HoldButton("On purpose", 3, lambda: self.controller.spell_on_purpose(), color="#6c8aa0")
+        row.addWidget(more, 1)
+        row.addWidget(purpose, 1)
+        layout.addLayout(row)
+        if hold_seconds:
+            hint = QLabel("<i>Hold to choose more: %d s this time, longer next time.</i>" % hold_seconds)
+            hint.setStyleSheet("color: #2a6f97; font-size: 11px;")
+            layout.addWidget(hint)
+
+    def start(self) -> None:
+        self.adjustSize()
+        screen = QGuiApplication.screenAt(QCursor.pos()) or QGuiApplication.primaryScreen()
+        if screen is not None:
+            area = screen.availableGeometry()
+            self.move(area.x() + (area.width() - self.width()) // 2, area.y() + (area.height() - self.height()) // 3)
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def closeEvent(self, event) -> None:
+        self.controller.spell_closed(self)
         super().closeEvent(event)

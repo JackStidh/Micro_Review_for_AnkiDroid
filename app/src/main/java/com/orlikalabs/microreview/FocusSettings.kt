@@ -185,8 +185,9 @@ object FocusSettings {
     fun setSnoozeLiftsGate(context: Context, enabled: Boolean) = prefs(context).edit().putBoolean(KEY_SNOOZE_LIFTS_GATE, enabled).apply()
 
     /** Whether anything needs the phone's use to be watched ([UsageMonitorService]). */
-    /** The monitor runs for the nudges, the gate and Move's prompts ([MoveStore.promptsOn]). */
-    fun monitorWanted(context: Context): Boolean = nudgesEnabled(context) || gateEnabled(context) || MoveStore.promptsOn(context)
+    /** The monitor runs for the nudges, the gate, Move's prompts ([MoveStore.promptsOn]) and the lifestyle ones ([LifeSettings]). */
+    fun monitorWanted(context: Context): Boolean =
+        nudgesEnabled(context) || gateEnabled(context) || MoveStore.promptsOn(context) || LifeSettings.promptsOn(context)
 
     // Look
 

@@ -99,7 +99,13 @@ class MoveActivity : ComponentActivity(), MoveActions {
         val label = if (partsDone >= parts.size) done.name.lowercase() else parts[(partsDone - 1).coerceAtLeast(0)].id
         // A strength session counts as one once its strength part is done.
         val strength = done == MovePlan.Session.STRENGTH && parts.take(partsDone).any { it.id == "strength" }
+        val first = MoveStore.today(this)?.evening == null
         MoveStore.updateToday(this) { it.copy(evening = label, strength = it.strength || strength) }
+        if (first) {
+            LifeStore.award(this, Progress.Event.SESSION, Progress.Counter.SESSIONS)
+            if (strength) LifeStore.award(this, Progress.Event.STRENGTH)
+            LifeStore.eveningStreak(this, MovePlan.streak(MoveStore.days(this), LocalDate.now()))
+        }
         FocusLog.i(this, "move session done: $label")
         session = null
         state = read()
@@ -113,6 +119,7 @@ class MoveActivity : ComponentActivity(), MoveActions {
     }
 
     override fun pain(spot: MovePlan.PainSpot) {
+        if (MoveStore.today(this)?.pain == null) LifeStore.award(this, Progress.Event.CHECK_IN)
         MoveStore.updateToday(this) { it.copy(pain = spot) }
         state = read()
     }
@@ -123,6 +130,7 @@ class MoveActivity : ComponentActivity(), MoveActions {
     }
 
     override fun morningDone() {
+        if (MoveStore.today(this)?.morning != true) LifeStore.award(this, Progress.Event.MORNING)
         MoveStore.updateToday(this) { it.copy(morning = true) }
         state = read()
     }
@@ -133,6 +141,7 @@ class MoveActivity : ComponentActivity(), MoveActions {
 
     override fun addWalk(minutes: Int) {
         MoveStore.updateToday(this) { it.copy(walkMinutes = it.walkMinutes + minutes) }
+        repeat(minutes / 10) { LifeStore.award(this, Progress.Event.WALK_10) }
         state = read()
     }
 

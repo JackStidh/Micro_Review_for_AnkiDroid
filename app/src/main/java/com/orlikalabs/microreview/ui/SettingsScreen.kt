@@ -452,7 +452,7 @@ private fun Value(title: String, value: String, onClick: (title: String) -> Unit
 
 /** The launcher's apps, to tick ([multiple]) or to pick one, with a search field. */
 @Composable
-private fun AppsDialog(
+internal fun AppsDialog(
     title: String,
     apps: List<LauncherApp>?,
     initial: Set<String>,
